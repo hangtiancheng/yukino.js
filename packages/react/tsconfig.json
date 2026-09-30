@@ -1,0 +1,51 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "lib": [
+      "ESNext",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "module": "ESNext",
+    "moduleDetection": "force",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "noEmit": true,
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "skipLibCheck": true,
+    "verbatimModuleSyntax": true,
+    "erasableSyntaxOnly": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "@yukino.js/react",
+    "types": [],
+    "paths": {
+      "@yukino.js/react/jsx-dev-runtime": [
+        "./src/jsx-dev-runtime.ts"
+      ],
+      "@yukino.js/react/jsx-runtime": [
+        "./src/jsx-runtime.ts"
+      ],
+      "@yukino.js/react/vite": [
+        "./src/vite.ts"
+      ],
+      "@yukino.js/react/webpack": [
+        "./src/webpack.ts"
+      ],
+      "@yukino.js/react": [
+        "./src/index.ts"
+      ],
+      "@/*": [
+        "./src/*"
+      ]
+    }
+  },
+  "include": [
+    "src",
+    "tests",
+    "tsup.config.ts",
+    "vitest.config.ts"
+  ]
+}

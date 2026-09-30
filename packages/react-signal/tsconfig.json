@@ -1,0 +1,46 @@
+{
+  // Visit https://aka.ms/tsconfig to read more about this file
+  "compilerOptions": {
+    "declaration": true,
+    "declarationMap": true,
+    // Stricter Typechecking Options
+    // "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": false,
+    "isolatedModules": true,
+    "noEmit": true,
+    // For nodejs:
+    "lib": ["esnext", "DOM", "DOM.Iterable"],
+    // Environment Settings
+    // See also https://aka.ms/tsconfig/module
+    "module": "esnext",
+    "moduleDetection": "force",
+    "moduleResolution": "bundler",
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    // Style Options
+    "noImplicitReturns": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noUncheckedSideEffectImports": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "paths": {
+      "@yukino.js/react-signal/jsx-dev-runtime": ["./src/jsx-dev-runtime.ts"],
+      "@yukino.js/react-signal/jsx-runtime": ["./src/jsx-runtime.ts"],
+      "@yukino.js/react-signal": ["./src/index.ts"],
+      "@/*": ["./src/*"]
+    },
+    "allowJs": true,
+    // File Layout
+    "rootDir": "./",
+    "skipLibCheck": true,
+    // Other Outputs
+    "sourceMap": true,
+    // Recommended Options
+    "strict": true,
+    "target": "esnext",
+    "types": ["node", "vitest/globals"],
+    "jsx": "react-jsx",
+    "jsxImportSource": "@yukino.js/react-signal",
+    "verbatimModuleSyntax": true
+  }
+}

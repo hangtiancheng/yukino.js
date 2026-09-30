@@ -1,0 +1,26 @@
+{
+  "name": "yukino.js",
+  "homepage": "https://github.com/hangtiancheng/yukino.js/tree/main/#readme",
+  "bugs": {
+    "url": "https://github.com/hangtiancheng/yukino.js/issues"
+  },
+  "author": "https://github.com/hangtiancheng",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hangtiancheng/yukino.js.git"
+  },
+  "type": "module",
+  "scripts": {
+    "format": "concurrently \"pnpm --filter @yukino.js/anti-copy format\" \"pnpm --filter @yukino.js/cache format\" \"pnpm --filter @yukino.js/react format\" \"pnpm --filter @yukino.js/react-signal format\"",
+    "git:commit": "git add -A && git commit -m \"feat: Introduce new features\"",
+    "git:push": "pnpm git:commit && git push origin main",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.4",
+    "husky": "^9.1.7",
+    "jsdom": "^26.1.0",
+    "lint-staged": "^17.6.0",
+    "prettier-plugin-tailwindcss": "^0.8.1"
+  }
+}

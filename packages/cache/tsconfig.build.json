@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "declaration": true,
+    "declarationDir": "./dist",
+    "declarationMap": false,
+    "inlineSourceMap": false,
+    "inlineSources": false,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "removeComments": true,
+    "sourceMap": false
+  },
+  "exclude": ["node_modules", "dist", "tests", "src/main.ts"],
+  "extends": "./tsconfig.json",
+  "include": ["./src/**/*.ts"]
+}

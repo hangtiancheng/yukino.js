@@ -1,0 +1,111 @@
+{
+  "name": "@yukino.js/react-signal",
+  "version": "0.0.1",
+  "description": "@yukino.js/react-signal - TypeScript framework",
+  "keywords": [
+    "framework",
+    "react-signal",
+    "yukino.js"
+  ],
+  "license": "MIT",
+  "author": "https://github.com/hangtiancheng",
+  "repository": {
+    "url": "https://github.com/yukino-js/yukino.js",
+    "directory": "packages/react-signal"
+  },
+  "files": [
+    "dist",
+    "skills",
+    "README.md"
+  ],
+  "type": "module",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./vite": {
+      "import": {
+        "types": "./dist/vite.d.ts",
+        "default": "./dist/vite.js"
+      },
+      "require": {
+        "types": "./dist/vite.d.cts",
+        "default": "./dist/vite.cjs"
+      }
+    },
+    "./webpack": {
+      "import": {
+        "types": "./dist/webpack.d.ts",
+        "default": "./dist/webpack.js"
+      },
+      "require": {
+        "types": "./dist/webpack.d.cts",
+        "default": "./dist/webpack.cjs"
+      }
+    },
+    "./jsx-runtime": {
+      "import": {
+        "types": "./dist/jsx-runtime.d.ts",
+        "default": "./dist/jsx-runtime.js"
+      },
+      "require": {
+        "types": "./dist/jsx-runtime.d.cts",
+        "default": "./dist/jsx-runtime.cjs"
+      }
+    },
+    "./jsx-dev-runtime": {
+      "import": {
+        "types": "./dist/jsx-dev-runtime.d.ts",
+        "default": "./dist/jsx-dev-runtime.js"
+      },
+      "require": {
+        "types": "./dist/jsx-dev-runtime.d.cts",
+        "default": "./dist/jsx-dev-runtime.cjs"
+      }
+    },
+    "./client": {
+      "types": "./dist/client.d.ts"
+    }
+  },
+  "scripts": {
+    "prepublish": "pnpm build",
+    "build": "tsup",
+    "format": "prettier -w ./ --experimental-cli",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.build.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@preact/signals-core": "^1.14.4",
+    "preact": "^10.29.8"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "@vitest/coverage-v8": "4.1.6",
+    "jsdom": "^29.1.1",
+    "prettier": "^3.9.9",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3",
+    "vite": "^8.2.2",
+    "vitest": "^4.1.11"
+  },
+  "peerDependencies": {
+    "vite": "^8.0.14"
+  },
+  "peerDependenciesMeta": {
+    "vite": {
+      "optional": true
+    }
+  }
+}

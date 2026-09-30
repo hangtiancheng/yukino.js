@@ -1,0 +1,57 @@
+{
+  "name": "@yukino.js/lit-jsx",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "A jsx runtime for lit",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./jsx-runtime": {
+      "types": "./dist/jsx-runtime.d.ts",
+      "import": "./dist/jsx-runtime.js",
+      "require": "./dist/jsx-runtime.cjs"
+    },
+    "./jsx-dev-runtime": {
+      "types": "./dist/jsx-runtime.d.ts",
+      "import": "./dist/jsx-runtime.js",
+      "require": "./dist/jsx-runtime.cjs"
+    }
+  },
+  "author": {
+    "name": "hangtiancheng <yukino161043261@gmail.com>"
+  },
+  "license": "MIT",
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "pnpm --dir ../ lint",
+    "format": "pnpm --dir ../ format",
+    "prepublishOnly": "pnpm build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hangtiancheng/r.git",
+    "directory": "lit-jsx"
+  },
+  "files": [
+    "dist",
+    "skills",
+    "README.md"
+  ],
+  "dependencies": {
+    "lit": "latest"
+  },
+  "devDependencies": {
+    "jsdom": "^30.1.1",
+    "tsup": "latest",
+    "typescript": "^6.0.3",
+    "vitest": "^5.0.2"
+  }
+}

@@ -1,0 +1,111 @@
+{
+  "name": "@yukino.js/react",
+  "version": "0.0.1",
+  "description": "@yukino.js/react",
+  "keywords": [
+    "framework",
+    "hooks",
+    "jsx",
+    "light-weight",
+    "react",
+    "virtual-dom"
+  ],
+  "license": "MIT",
+  "author": "https://github.com/hangtiancheng",
+  "repository": {
+    "url": "https://github.com/hangtiancheng/yukino.js",
+    "directory": "packages/react"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": [
+    "./dist/index.js",
+    "./dist/index.cjs"
+  ],
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./vite": {
+      "import": {
+        "types": "./dist/vite.d.ts",
+        "default": "./dist/vite.js"
+      },
+      "require": {
+        "types": "./dist/vite.d.cts",
+        "default": "./dist/vite.cjs"
+      }
+    },
+    "./webpack": {
+      "import": {
+        "types": "./dist/webpack.d.ts",
+        "default": "./dist/webpack.js"
+      },
+      "require": {
+        "types": "./dist/webpack.d.cts",
+        "default": "./dist/webpack.cjs"
+      }
+    },
+    "./jsx-runtime": {
+      "import": {
+        "types": "./dist/jsx-runtime.d.ts",
+        "default": "./dist/jsx-runtime.js"
+      },
+      "require": {
+        "types": "./dist/jsx-runtime.d.cts",
+        "default": "./dist/jsx-runtime.cjs"
+      }
+    },
+    "./jsx-dev-runtime": {
+      "import": {
+        "types": "./dist/jsx-dev-runtime.d.ts",
+        "default": "./dist/jsx-dev-runtime.js"
+      },
+      "require": {
+        "types": "./dist/jsx-dev-runtime.d.cts",
+        "default": "./dist/jsx-dev-runtime.cjs"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "prepublish": "pnpm build",
+    "build": "tsup",
+    "format": "prettier -w . --experimental-cli",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.build.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@types/react": "^19.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "jsdom": "^29.1.1",
+    "prettier": "^3.9.9",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.6",
+    "vitest": "^4.1.11"
+  },
+  "peerDependencies": {
+    "vite": "^7.0.0 || ^8.0.0"
+  },
+  "peerDependenciesMeta": {
+    "vite": {
+      "optional": true
+    }
+  }
+}

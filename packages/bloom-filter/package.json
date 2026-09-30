@@ -1,0 +1,38 @@
+{
+  "name": "@yukino.js/bloom-filter",
+  "version": "0.0.0",
+  "description": "A standard Bloom Filter implementation in TypeScript",
+  "keywords": [
+    "bloom-filter",
+    "data-structure",
+    "probabilistic",
+    "set-membership",
+    "xxhash"
+  ],
+  "license": "MIT",
+  "author": "hangtiancheng",
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@node-rs/xxhash": "^1.7.8"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.11"
+  }
+}

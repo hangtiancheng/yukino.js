@@ -1,0 +1,76 @@
+{
+  "name": "@yukino.js/cache",
+  "version": "0.0.1",
+  "description": "Distributed cache library aligned with yukino.go/yukino_cache",
+  "keywords": [
+    "cache",
+    "consistent-hash",
+    "distributed-cache",
+    "etcd",
+    "grpc",
+    "lru",
+    "single-flight"
+  ],
+  "homepage": "https://github.com/hangtiancheng/yukino.js/tree/main/packages/cache#readme",
+  "bugs": {
+    "url": "https://github.com/hangtiancheng/yukino.js/issues"
+  },
+  "license": "MIT",
+  "author": "https://github.com/hangtiancheng",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hangtiancheng/yukino.js.git",
+    "directory": "packages/cache"
+  },
+  "files": [
+    "dist",
+    "skills",
+    "README.md"
+  ],
+  "type": "module",
+  "main": "dist/index.mjs",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "default": "./dist/index.mjs"
+    },
+    "./proto/yukino.proto": "./dist/proto/yukino.proto",
+    "./proto/health.proto": "./dist/proto/health.proto",
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "rollup -c rollup.config.mjs",
+    "clean": "rm -rf dist",
+    "dev": "node ./dev.js",
+    "prepublishOnly": "pnpm clean && pnpm build",
+    "test": "vitest run",
+    "format": "prettier -w ./ --experimental-cli"
+  },
+  "dependencies": {
+    "@grpc/grpc-js": "^1.14.5",
+    "@grpc/proto-loader": "^0.7.15",
+    "etcd3": "^1.1.2"
+  },
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^29.0.3",
+    "@rollup/plugin-node-resolve": "^16.0.3",
+    "@rollup/plugin-typescript": "^12.3.0",
+    "@types/node": "^24.13.3",
+    "@vitest/coverage-v8": "4.1.9",
+    "rollup": "^4.63.5",
+    "rollup-plugin-copy": "^3.5.0",
+    "rollup-plugin-dts": "^6.5.1",
+    "tslib": "^2.8.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.11"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

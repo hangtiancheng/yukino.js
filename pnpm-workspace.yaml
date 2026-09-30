@@ -1,0 +1,18 @@
+packages:
+  # Workspace package paths. Glob patterns are supported
+  - packages/*
+
+overrides:
+  "@types/node": "^24.13.3"
+  "vite": "^7.3.6"
+
+allowBuilds:
+  "@parcel/watcher": true
+  "@swc/core": true
+  core-js: true
+  core-js-pure: true
+  esbuild: true
+  keytar: true
+  msw: true
+  protobufjs: true
+  es5-ext: true

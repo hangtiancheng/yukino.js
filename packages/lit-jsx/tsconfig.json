@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "declaration": true,
+    "emitDecoratorMetadata": true,
+    "esModuleInterop": true,
+    "experimentalDecorators": true,
+    "forceConsistentCasingInFileNames": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "noEmit": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "target": "esnext",
+    // https://lit.dev/docs/components/properties/#avoiding-issues-with-class-fields
+    "useDefineForClassFields": false,
+    "sourceMap": false
+  },
+  "exclude": ["node_modules", "dist"],
+  "include": ["./src", "./tests"]
+}
