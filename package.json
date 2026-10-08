@@ -12,6 +12,7 @@
   "type": "module",
   "scripts": {
     "format": "concurrently \"pnpm --filter @yukino.js/anti-copy format\" \"pnpm --filter @yukino.js/cache format\" \"pnpm --filter @yukino.js/react format\" \"pnpm --filter @yukino.js/react-signal format\"",
+    "git:config": "git config user.name hangtiancheng && git config user.email '161043261@qq.com'",
     "git:commit": "git add -A && git commit -m \"feat: Introduce new features\"",
     "git:push": "pnpm git:commit && git push origin main",
     "prepare": "husky"
@@ -22,5 +23,10 @@
     "jsdom": "^26.1.0",
     "lint-staged": "^17.6.0",
     "prettier-plugin-tailwindcss": "^0.8.1"
+  },
+  "lint-staged": {
+    "*.{json,jsonc,js,cjs,mjs,jsx,ts,cts,mts,tsx,html,vue,css,scss,md,mdx}": [
+      "sh -c 'pnpm format'"
+    ]
   }
 }
