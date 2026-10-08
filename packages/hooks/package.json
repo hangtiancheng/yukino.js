@@ -29,15 +29,15 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@storybook/react-vite": "^10.6.0",
+    "@storybook/react-vite": "^10.6.1",
     "@tailwindcss/vite": "^4.3.3",
-    "@vitejs/plugin-react": "^6.1.1",
+    "@vitejs/plugin-react": "^6.1.2",
     "query-string": "^9.5.1",
     "react-router": "^7.18.4",
     "react-router-dom": "^7.18.4",
     "react-router-dom-v5": "npm:react-router-dom@^5.3.4",
     "react-router-v5": "npm:react-router@^5.3.4",
-    "storybook": "^10.6.0",
+    "storybook": "^10.6.1",
     "tailwindcss": "^4.3.3",
     "vite": "^7.3.6"
   },
@@ -52,7 +52,7 @@
     "jsdom": "^26.1.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "rollup": "^4.63.5",
+    "rollup": "^4.64.1",
     "rollup-plugin-dts": "^6.5.1",
     "tslib": "^2.8.1",
     "vitest": "^4.1.11"

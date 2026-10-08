@@ -1,4 +1,5 @@
 {
+  "packageManager": "pnpm@12.10.1",
   "name": "yukino.js",
   "homepage": "https://github.com/hangtiancheng/yukino.js/tree/main/#readme",
   "bugs": {
