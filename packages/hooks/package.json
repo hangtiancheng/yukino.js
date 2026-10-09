@@ -39,7 +39,7 @@
     "react-router-v5": "npm:react-router@^5.3.4",
     "storybook": "^10.6.1",
     "tailwindcss": "^4.3.3",
-    "vite": "^7.3.6"
+    "vite": "^7.3.7"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^29.0.3",

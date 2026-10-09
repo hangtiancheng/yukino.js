@@ -92,12 +92,12 @@
     "@types/react": "^19.3.0"
   },
   "devDependencies": {
-    "@types/node": "^24.13.3",
+    "@types/node": "^24.19.1",
     "jsdom": "^29.1.1",
     "prettier": "^3.9.9",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3",
-    "vite": "^7.3.6",
+    "vite": "^7.3.7",
     "vitest": "^4.1.11"
   },
   "peerDependencies": {
