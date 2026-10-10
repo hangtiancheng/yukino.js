@@ -1,39 +1,3 @@
-/**
- * History-only router, aligned with react-router's data model, built on
- * signals — **factory-based, no module-level singleton state**.
- *
- * ```ts
- * const router = createRouter(
- *   [
- *     { path: "/", component: Home },
- *     { path: "/users/:id", component: UserDetail },
- *     { path: "/admin", lazy: () => import("./views/admin") },
- *     { path: "*", component: NotFound },
- *   ],
- *   { basename: "/app" },
- * );
- * render(<RouterView router={router} />, container);
- * ```
- *
- * - `router.location` — `ReadonlySignal<Location>` with the react-router
- *   shape `{ pathname, search, hash, state, key }` (pathname is
- *   basename-stripped). Reading `.value` in a tracked region subscribes.
- * - `router.match` / `router.params` / `router.searchParams` — computeds.
- * - `router.navigate(to, { replace, state })` — react-router `navigate`
- *   semantics; resolves `false` when a blocker rejected.
- * - `router.block(blocker)` — async navigation blocking; blocked history
- *   traversals are reverted via `history.go(delta)`.
- * - `router.dispose()` — detach the popstate listener.
- *
- * `createRouter` also records the instance as the ACTIVE router so that
- * `useRouter()` / `<RouterView/>` / `useUrlState()` resolve it without prop
- * drilling (share `@yukino.js/react-signal` as an MF singleton — each copy of the
- * library would otherwise have its own active pointer).
- *
- * Route matching supports dynamic segments (`/users/:id`), splats (`*`,
- * `/files/*`) and react-router-style ranking (static > dynamic > splat).
- * History mode only — there is no hash routing.
- */
 import { signal, computed, untracked, type ReadonlySignal } from "./reactive";
 import { devWarn } from "./utils";
 import { useSignal, useSignalEffect } from "./hooks";
@@ -49,11 +13,6 @@ import type {
   RouterApi,
 } from "./types";
 
-// ============================================================
-// Pure helpers (no router state)
-// ============================================================
-
-/** History state wrapper (history v5 layout: user state + entry key + index). */
 interface StateWrapper {
   usr: unknown;
   key: string;
@@ -66,7 +25,6 @@ function createKey(): string {
   return `k${++keySeq}${Math.random().toString(36).slice(2, 8)}`;
 }
 
-/** Read the wrapper a router wrote into `history.state`, if any. */
 function readWrapper(): StateWrapper | null {
   const s: unknown = globalThis.history.state;
   if (
@@ -79,7 +37,6 @@ function readWrapper(): StateWrapper | null {
   return null;
 }
 
-/** Build a raw `Location` from the current window URL + history state. */
 function readWindowLocation(): Location {
   const { pathname, search, hash } = globalThis.location;
   const wrapper = readWrapper();
@@ -92,7 +49,6 @@ function readWindowLocation(): Location {
   };
 }
 
-/** Parse a `To` string into path parts (react-router `parsePath`). */
 function parsePath(path: string): {
   pathname?: string;
   search?: string;
@@ -114,15 +70,10 @@ function parsePath(path: string): {
   return parsed;
 }
 
-/** Normalize a `search`/`hash` part to start with its prefix (or be ""). */
 function normalizePart(value: string | undefined, prefix: "?" | "#"): string {
   if (!value || value === prefix) return "";
   return value.startsWith(prefix) ? value : prefix + value;
 }
-
-// ============================================================
-// Route matching (react-router data model: :params, *, ranking)
-// ============================================================
 
 function splitSegments(path: string): string[] {
   return path
@@ -131,7 +82,6 @@ function splitSegments(path: string): string[] {
     .filter(Boolean);
 }
 
-/** Rank a route pattern (react-router-style: static > dynamic > splat). */
 function scorePath(path: string): number {
   const segments = splitSegments(path);
   let score = segments.length;
@@ -151,14 +101,6 @@ function decodeSegment(value: string): string {
   }
 }
 
-/**
- * Match a single route pattern against a pathname.
- *
- * Supports `:param` dynamic segments and a trailing `*` splat (captured as
- * `params["*"]`). Static segments compare case-insensitively (react-router
- * default). Returns the captured params, or `null` when the pattern does
- * not match.
- */
 export function matchPath(
   pattern: string,
   pathname: string,
@@ -190,11 +132,6 @@ export function matchPath(
   return pSegs.length === uSegs.length ? params : null;
 }
 
-/**
- * Match a pathname against a flat route table, react-router style: all
- * candidates are ranked (static segments outrank dynamic ones, splats rank
- * last) and the best-scoring match wins; ties resolve in registration order.
- */
 export function matchRoutes(
   routes: RouteObject[],
   pathname: string,
@@ -213,17 +150,8 @@ export function matchRoutes(
   return best;
 }
 
-// ============================================================
-// Lazy route resolution (in-flight dedup, cached on the route)
-// ============================================================
-
 const pendingLazy = new Map<RouteObject, Promise<Component>>();
 
-/**
- * Resolve a route's component: `component` synchronously, otherwise start
- * (or join) the `lazy()` load. The resolved component is cached on the route
- * object; failures clear the in-flight marker and PROPAGATE (no swallowing).
- */
 function resolveRouteComponent(
   route: RouteObject,
 ): Component | Promise<Component> | undefined {
@@ -239,7 +167,7 @@ function resolveRouteComponent(
             ? (mod as { default: Component }).default
             : mod
         ) as Component;
-        route.component = fn; // subsequent matches render synchronously
+        route.component = fn;
         return fn;
       },
       (err: unknown) => {
@@ -252,23 +180,12 @@ function resolveRouteComponent(
   return pending;
 }
 
-// ============================================================
-// createRouter (factory — all state closure-scoped)
-// ============================================================
-
 export interface RouterOptions {
-  /** Base path prepended to all hrefs and stripped before matching. */
   basename?: string;
 }
 
-/** The active router (last created wins) — resolved by `useRouter()`. */
 let activeRouter: RouterApi | null = null;
 
-/**
- * Create a history router over a route table. All state lives in the
- * returned instance; the instance is also recorded as the ACTIVE router
- * for `useRouter()` / `<RouterView/>`.
- */
 export function createRouter(
   routes: RouteObject[],
   options: RouterOptions = {},
@@ -278,7 +195,6 @@ export function createRouter(
     : "";
   const routeTable = [...routes];
 
-  /** Strip the basename; `null` when the pathname is outside it. */
   const stripBasename = (pathname: string): string | null => {
     if (!basename) return pathname;
     if (!pathname.toLowerCase().startsWith(basename.toLowerCase())) return null;
@@ -287,20 +203,15 @@ export function createRouter(
     return rest || "/";
   };
 
-  /** react-router semantics: the public pathname has the basename stripped. */
   const toPublic = (raw: Location): Location => {
     const stripped = stripBasename(raw.pathname);
     if (stripped == null || stripped === raw.pathname) return raw;
     return { ...raw, pathname: stripped };
   };
 
-  /** Serialize a (public) location into the href written to the URL bar. */
   const createHref = (loc: Location): string =>
     `${basename}${loc.pathname}${loc.search}${loc.hash}`;
 
-  // ---- signals -------------------------------------------------------
-
-  /** Raw window location (pathname INCLUDES the basename). */
   const rawLocation = signal<Location>(readWindowLocation());
 
   const location: ReadonlySignal<Location> = computed(() =>
@@ -321,22 +232,16 @@ export function createRouter(
     () => new URLSearchParams(rawLocation.value.search),
   );
 
-  // ---- navigation ----------------------------------------------------
-
   const blockers = new Set<Blocker>();
 
-  /** Current history stack index (mirrors `history.state.idx`). */
   let index = 0;
 
-  /** Swallow the popstate echo produced by a blocker-rejected revert. */
   let revertingPop = false;
 
-  /** Commit the CURRENT window URL + history state — one signal write. */
   const commit = (): void => {
     rawLocation.value = readWindowLocation();
   };
 
-  /** Run blockers in registration order; first `false`/throw blocks. */
   const runBlockers = async (
     next: Location,
     current: Location,
@@ -355,7 +260,6 @@ export function createRouter(
     return true;
   };
 
-  /** Resolve a `To` against the current (public) location. */
   const resolveLocation = (to: To, state: unknown): Location => {
     const current = location.peek();
     const path = typeof to === "string" ? parsePath(to) : to;
@@ -387,8 +291,6 @@ export function createRouter(
     }
 
     const href = createHref(next);
-    // Navigating to the current href replaces instead of pushing
-    // (react-router behavior — avoids duplicate history entries).
     const replace = options.replace || href === createHref(current);
     const idx = replace ? index : index + 1;
     const wrapper: StateWrapper = { usr: options.state, key: next.key, idx };
@@ -410,11 +312,6 @@ export function createRouter(
     };
   };
 
-  // ---- popstate ------------------------------------------------------
-
-  // Blockers run AFTER the browser already moved (popstate is
-  // post-traversal): consult them at the target, and revert via
-  // `history.go(delta)` on rejection (the echo popstate is swallowed).
   const handlePop = (): void => {
     if (revertingPop) {
       revertingPop = false;
@@ -441,10 +338,6 @@ export function createRouter(
     });
   };
 
-  // ---- wire up -------------------------------------------------------
-
-  // Seed the current entry with an index (preserving pre-existing state and
-  // the CURRENT URL — never rewrite it here).
   const wrapper = readWrapper();
   if (wrapper) {
     index = wrapper.idx;
@@ -479,14 +372,6 @@ export function createRouter(
   return router;
 }
 
-// ============================================================
-// Router hooks + RouterView
-// ============================================================
-
-/**
- * The active router (the last `createRouter` result). Throws when no router
- * has been created — create one during app boot.
- */
 export function useRouter(): RouterApi {
   if (!activeRouter) {
     throw new Error("useRouter: no active router — call createRouter() first");
@@ -494,11 +379,6 @@ export function useRouter(): RouterApi {
   return activeRouter;
 }
 
-/**
- * Register a navigation blocker for this component's lifetime (react-router
- * `useBlocker`): registered on mount, unregistered on unmount. The blocker
- * closure is captured on the first render.
- */
 export function useBlocker(blocker: Blocker): void {
   const router = useRouter();
   useValueSlot(
@@ -507,29 +387,11 @@ export function useBlocker(blocker: Blocker): void {
   );
 }
 
-/**
- * Route outlet component: renders the active router's matched component
- * (hostless — the matched component's DOM splices directly into the
- * parent). Pass `router` explicitly, or omit it to use the active router.
- *
- * - Route change → the component swaps (old instance unmounted by the diff).
- * - Param-only change → SAME instance; the component re-renders only if it
- *   read `router.params` / `router.location` (tracked reads).
- * - `lazy` routes resolve once (in-flight dedup, cached on the route);
- *   nothing renders until the load lands. Load failures propagate as
- *   unhandled rejections — there is no swallowing.
- *
- * @example
- * const router = createRouter(routes);
- * render(<RouterView router={router} />, document.getElementById("root")!);
- */
 export function RouterView(props: { router?: RouterApi }): JSXNode {
-  const explicit = props.router as RouterApi | undefined; // tracked prop read
+  const explicit = props.router as RouterApi | undefined;
   const router = explicit ?? useRouter();
   const lazyTick = useSignal(0);
 
-  // Kick off lazy loads when an unresolved route matches; bump the tick on
-  // completion so the body below re-renders with route.component populated.
   useSignalEffect(() => {
     const m = ((props.router as RouterApi | undefined) ?? useRouter()).match
       .value;
@@ -542,8 +404,8 @@ export function RouterView(props: { router?: RouterApi }): JSXNode {
     }
   });
 
-  const m = router.match.value; // tracked — re-render per committed navigation
-  lazyTick.value; // tracked — re-render when a lazy load lands
+  const m = router.match.value;
+  lazyTick.value;
   const fn = m?.route.component;
   return fn ? createVNode(fn, {}) : null;
 }

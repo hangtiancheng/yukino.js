@@ -34,11 +34,6 @@ interface FakeWindow {
   removeEventListener: (type: string, listener: () => void) => void;
 }
 
-/**
- * A stand-in window: metrics are plain fields, `performance.now` makes every
- * probe measure `probeCost` ms (second call of the pair returns the cost),
- * and each `location.href` assignment is recorded.
- */
 function createFakeWindow() {
   let calls = 0;
   let probeCost = 0;
@@ -66,11 +61,9 @@ function createFakeWindow() {
   return {
     view,
     hrefSets,
-    /** Simulates the debugger statement pausing this many ms per probe. */
     probePausesFor(ms: number) {
       probeCost = ms;
     },
-    /** 300px inner-width delta trips the default docked-DevTools threshold. */
     openDevtools() {
       view.innerWidth = 900;
     },
@@ -108,8 +101,6 @@ describe("devtools detector", () => {
     const onViolation = vi.fn();
     instance = createAntiCopy({
       ...REPORT_ONLY,
-      // freeze:false keeps this suite report-only — the real window cannot
-      // simulate a paused probe and would hit the redirect fallback.
       devtools: { intervalMs: 100, threshold: 170, freeze: false },
       onViolation,
     });
@@ -123,11 +114,9 @@ describe("devtools detector", () => {
     expect(onViolation).toHaveBeenCalledTimes(1);
     expect(onViolation).toHaveBeenCalledWith({ type: "devtools" });
 
-    // Still open: no repeated notifications.
     vi.advanceTimersByTime(500);
     expect(onViolation).toHaveBeenCalledTimes(1);
 
-    // Close, then reopen: fires again.
     setWindowMetrics(1200, 1200);
     vi.advanceTimersByTime(200);
     setWindowMetrics(1200, 900);
@@ -157,8 +146,6 @@ describe("devtools detector", () => {
       onViolation,
     });
     instance.enable();
-    // Patch only intervalMs; a shallow merge would reset threshold to 170
-    // and the 300px delta below would then fire a false violation.
     instance.update({ devtools: { intervalMs: 50 } });
     setWindowMetrics(1200, 900);
     vi.advanceTimersByTime(500);
@@ -182,18 +169,14 @@ describe("devtools countermeasures", () => {
     });
     instance.enable();
 
-    // The probe pauses — an undocked DevTools window the size heuristic
-    // cannot see — so DevTools counts as open.
     fake.probePausesFor(500);
     vi.advanceTimersByTime(100);
     expect(onViolation).toHaveBeenCalledTimes(1);
 
-    // The guard loop keeps re-pausing; the stall is working, no redirect.
     vi.advanceTimersByTime(5000);
     expect(onViolation).toHaveBeenCalledTimes(1);
     expect(fake.hrefSets).toEqual([]);
 
-    // DevTools closed: drop back to slow polling, a reopen fires again.
     fake.probePausesFor(0);
     fake.closeDevtools();
     vi.advanceTimersByTime(20);
@@ -214,20 +197,16 @@ describe("devtools countermeasures", () => {
     });
     instance.enable();
 
-    // Docked DevTools with an attached debugger: the stall engages.
     fake.openDevtools();
     fake.probePausesFor(500);
     vi.advanceTimersByTime(100);
     expect(onViolation).toHaveBeenCalledTimes(1);
     expect(fake.hrefSets).toEqual([]);
 
-    // "Deactivate breakpoints": DevTools stays docked while the probe
-    // stops pausing. ~25 guard ticks later the page is evicted.
     fake.probePausesFor(0);
     vi.advanceTimersByTime(700);
     expect(fake.hrefSets).toEqual(["about:blank"]);
 
-    // The redirect fires exactly once.
     vi.advanceTimersByTime(2000);
     expect(fake.hrefSets).toEqual(["about:blank"]);
   });
@@ -243,9 +222,6 @@ describe("devtools countermeasures", () => {
     });
     instance.enable();
 
-    // Browser zoom shrinks innerWidth past the threshold, but the probe
-    // never pauses — DevTools is not actually open. The page must neither
-    // enter the guard loop nor get evicted.
     fake.openDevtools();
     vi.advanceTimersByTime(3000);
     expect(onViolation).toHaveBeenCalledTimes(1);
@@ -330,8 +306,6 @@ describe("devtools countermeasures", () => {
     vi.advanceTimersByTime(700);
     expect(fake.hrefSets).toEqual(["about:blank"]);
 
-    // The simulated navigation did not unload the page; a fresh
-    // disable → enable cycle must protect again instead of staying dead.
     instance.disable();
     instance.enable();
     fake.probePausesFor(500);

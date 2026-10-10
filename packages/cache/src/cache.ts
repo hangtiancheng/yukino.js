@@ -97,7 +97,6 @@ export class Cache {
 
     const expirationMs = expirationTime - Date.now();
     if (expirationMs <= 0) {
-      // writing an already-expired value is equivalent to a delete
       this.delete(key);
       return;
     }

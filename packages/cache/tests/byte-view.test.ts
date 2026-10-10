@@ -15,7 +15,7 @@ describe("ByteView", () => {
   it("byteSlice returns a copy that does not affect original", () => {
     const view = new ByteView(Buffer.from("value"));
     const copy = view.byteSlice();
-    copy[0] = 0x58; // 'X'
+    copy[0] = 0x58;
     expect(view.toString()).toBe("value");
   });
 

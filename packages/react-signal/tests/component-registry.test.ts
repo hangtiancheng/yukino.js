@@ -16,7 +16,7 @@ describe("component-registry (HMR alias map)", () => {
     const v3 = makeComponent();
     aliasComponent(v1, v2);
     aliasComponent(v2, v3);
-    expect(canonicalComponent(v1)).toBe(v3); // chain: v1 → v2 → v3
+    expect(canonicalComponent(v1)).toBe(v3);
     expect(canonicalComponent(v2)).toBe(v3);
     expect(canonicalComponent(v3)).toBe(v3);
   });
@@ -32,7 +32,6 @@ describe("component-registry (HMR alias map)", () => {
     const b = makeComponent();
     aliasComponent(a, b);
     aliasComponent(b, a);
-    // Cycle a → b → a: resolution terminates and returns one of the pair.
     const resolved = canonicalComponent(a);
     expect(resolved === a || resolved === b).toBe(true);
   });

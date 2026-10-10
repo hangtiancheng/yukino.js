@@ -16,7 +16,6 @@ function validIPv4(host: string): boolean {
 }
 
 export function validPeerAddr(addr: string): boolean {
-  // [IPv6]:port
   const v6 = addr.match(/^\[([0-9a-fA-F:.]+)\]:(\d+)$/);
   if (v6) {
     return v6[1].includes(":") && validPort(v6[2]);
@@ -30,7 +29,6 @@ export function validPeerAddr(addr: string): boolean {
 
   if (host === "localhost") return true;
   if (host.includes(".")) {
-    // dotted form must be a valid IPv4 or a valid multi-label hostname
     return validIPv4(host) || HOSTNAME_RE.test(host);
   }
   return false;

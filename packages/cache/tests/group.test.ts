@@ -66,7 +66,6 @@ describe("Group get caches local values", () => {
     });
 
     const signal = AbortSignal.abort();
-    // use a non-aborted signal for real calls
     const ctrl = new AbortController();
 
     for (let i = 0; i < 2; i++) {
@@ -164,7 +163,6 @@ describe("Group set, delete, clear, and expiration", () => {
     expect(view.toString()).toBe("manual");
 
     await group.delete(ctrl.signal, "key");
-    // after delete, get should call loader
     const view2 = await group.get(ctrl.signal, "key");
     expect(view2.toString()).toBe("loaded");
 
@@ -188,7 +186,7 @@ describe("Group uses remote peer", () => {
     const ctrl = new AbortController();
     const view = await group.get(ctrl.signal, "key");
 
-    remote[0] = 0x58; // 'X'
+    remote[0] = 0x58;
     expect(view.toString()).toBe("remote");
 
     group.close();
@@ -248,7 +246,6 @@ describe("Group set and delete sync to peer", () => {
     await new Promise((r) => setTimeout(r, 50));
     expect(synced).toContain("delete:group-sync/key");
 
-    // peer-originated set should not sync
     const syncedBefore = synced.length;
     await group.set(ctrl.signal, "peer-key", Buffer.from("v"), true);
     await new Promise((r) => setTimeout(r, 50));

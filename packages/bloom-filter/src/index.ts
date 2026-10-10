@@ -1,102 +1,45 @@
 import { xxh32 } from "@node-rs/xxhash";
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
 export interface BloomFilterConfig {
-  /** Size of the bit array in bits. */
   readonly m: number;
-  /** Number of hash functions. */
   readonly k: number;
-  /** Hash seed. */
   readonly seed: number;
-  /** The `n` used at construction time. */
   readonly expectedItems: number;
-  /** The `p` used at construction time. */
   readonly falsePositiveRate: number;
 }
 
 export interface BloomFilterSnapshot {
-  /** Configuration used to create the filter. */
   config: BloomFilterConfig;
-  /** Base-64 encoded bit array. */
   data: string;
-  /** Number of add() calls recorded before serialization. */
   insertedCount: number;
 }
 
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
-/** Maximum addressable bit-array size given 32-bit hash arithmetic. */
 const MAX_M = 2 ** 32;
 
-/** Pre-computed popcount lookup table for all byte values 0x00–0xFF. */
 const POPCNT_TABLE = new Uint8Array(256);
 for (let i = 1; i < 256; i++) {
   POPCNT_TABLE[i] = POPCNT_TABLE[i >> 1] + (i & 1);
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Optimal bit-array size:
- *   m = ceil( -n * ln(p) / (ln2)^2 )
- */
 function optimalM(n: number, p: number): number {
   return Math.ceil((-n * Math.log(p)) / (Math.LN2 * Math.LN2));
 }
 
-/**
- * Optimal number of hash functions:
- *   k = round( (m / n) * ln2 )
- */
 function optimalK(m: number, n: number): number {
   return Math.max(1, Math.round((m / n) * Math.LN2));
 }
 
-// ---------------------------------------------------------------------------
-// BloomFilter
-// ---------------------------------------------------------------------------
-
-/**
- * A space-efficient probabilistic data structure for set-membership testing.
- *
- * - No false negatives: `has()` returning `false` guarantees the item was
- *   never added.
- * - Possible false positives: `has()` returning `true` means the item is
- *   *probably* in the set, subject to the configured false-positive rate.
- *
- * Uses double hashing (`h1 + i*h2`) with xxHash32 for
- * fast, well-distributed bit indices.
- */
 export class BloomFilter {
-  // --- Immutable configuration ---
   public readonly m: number;
   public readonly k: number;
   private readonly seed: number;
   private readonly expectedItems: number;
   private readonly falsePositiveRate: number;
 
-  // --- Mutable state ---
   private bitArray: Uint8Array;
   private insertedCount: number = 0;
-  /** Incrementally maintained count of bits set to 1. */
   private setBits: number = 0;
 
-  // -----------------------------------------------------------------------
-  // Construction
-  // -----------------------------------------------------------------------
-
-  /**
-   * @param expectedItems      Expected number of items to insert (`n`). Must be a positive integer.
-   * @param falsePositiveRate  Desired false-positive probability (`p`), in (0, 1).
-   * @param seed               Optional hash seed (default `0`). Must be a non-negative 32-bit unsigned integer.
-   */
   constructor(
     expectedItems: number,
     falsePositiveRate: number,
@@ -138,22 +81,9 @@ export class BloomFilter {
     this.bitArray = new Uint8Array(Math.ceil(this.m / 8));
   }
 
-  // -----------------------------------------------------------------------
-  // Core API
-  // -----------------------------------------------------------------------
-
-  /**
-   * Add an item to the filter.
-   *
-   * Items are namespaced by type to prevent cross-type collisions
-   * (e.g. `add(0)` and `add("0")` are distinct entries).
-   *
-   * @returns `this` for chaining.
-   */
   public add(item: string | number | boolean): this {
     const key = typeKey(item);
     const h1 = xxh32(key, this.seed) >>> 0;
-    // Force h2 to be odd (and therefore non-zero) to avoid index degeneracy.
     const h2 = (xxh32(key, h1) | 1) >>> 0;
 
     for (let i = 0; i < this.k; i++) {
@@ -169,11 +99,6 @@ export class BloomFilter {
     return this;
   }
 
-  /**
-   * Test whether an item *might* be in the set.
-   *
-   * @returns `true` = possibly present; `false` = definitely absent.
-   */
   public has(item: string | number | boolean): boolean {
     const key = typeKey(item);
     const h1 = xxh32(key, this.seed) >>> 0;
@@ -188,11 +113,6 @@ export class BloomFilter {
     return true;
   }
 
-  /**
-   * Bulk-add multiple items.
-   *
-   * @returns `this` for chaining.
-   */
   public addAll(items: Iterable<string | number | boolean>): this {
     for (const item of items) {
       this.add(item);
@@ -200,23 +120,12 @@ export class BloomFilter {
     return this;
   }
 
-  /**
-   * Reset to empty state. Configuration (m, k, seed) is preserved.
-   */
   public clear(): void {
     this.bitArray.fill(0);
     this.insertedCount = 0;
     this.setBits = 0;
   }
 
-  // -----------------------------------------------------------------------
-  // Set operations
-  // -----------------------------------------------------------------------
-
-  /**
-   * Return a new filter that is the union of this filter and `other`.
-   * Both filters must share identical configuration (m, k, seed).
-   */
   public union(other: BloomFilter): BloomFilter {
     this.assertCompatible(other);
     const result = this.clone();
@@ -228,9 +137,6 @@ export class BloomFilter {
     return result;
   }
 
-  /**
-   * Return a deep copy of this filter.
-   */
   public clone(): BloomFilter {
     const copy = Object.create(BloomFilter.prototype) as BloomFilter;
     Object.assign(copy, {
@@ -246,44 +152,24 @@ export class BloomFilter {
     return copy;
   }
 
-  // -----------------------------------------------------------------------
-  // Diagnostics
-  // -----------------------------------------------------------------------
-
-  /** Number of `add()` calls (not de-duplicated). */
   public get size(): number {
     return this.insertedCount;
   }
 
-  /**
-   * Ratio of bits set to 1 — the "saturation" of the filter.
-   * A value approaching 1.0 means the false-positive rate has degraded well
-   * beyond the configured target.
-   */
   public get fillRatio(): number {
     return this.setBits / this.m;
   }
 
-  /**
-   * Whether the filter has exceeded 50% fill, indicating the false-positive
-   * rate is degrading significantly beyond the configured target.
-   */
   public get isSaturated(): boolean {
     return this.fillRatio > 0.5;
   }
 
-  /**
-   * Estimate the number of distinct items currently in the filter based on
-   * the observed fill ratio:  n* = -(m / k) * ln(1 - X / m)
-   * where X is the number of set bits.
-   */
   public get estimatedItemCount(): number {
     if (this.setBits === 0) return 0;
     if (this.setBits >= this.m) return Infinity;
     return Math.round(-(this.m / this.k) * Math.log(1 - this.setBits / this.m));
   }
 
-  /** Full construction-time configuration. */
   public getConfig(): BloomFilterConfig {
     return {
       m: this.m,
@@ -294,11 +180,6 @@ export class BloomFilter {
     };
   }
 
-  // -----------------------------------------------------------------------
-  // Serialization
-  // -----------------------------------------------------------------------
-
-  /** Serialize to a JSON-safe snapshot (config + base64 data + insert count). */
   public serialize(): BloomFilterSnapshot {
     return {
       config: this.getConfig(),
@@ -307,9 +188,6 @@ export class BloomFilter {
     };
   }
 
-  /**
-   * Restore a filter from a snapshot produced by {@link serialize}.
-   */
   public static deserialize(snapshot: BloomFilterSnapshot): BloomFilter {
     const { config, data } = snapshot;
     const filter = new BloomFilter(
@@ -339,11 +217,6 @@ export class BloomFilter {
     return filter;
   }
 
-  // -----------------------------------------------------------------------
-  // Internals
-  // -----------------------------------------------------------------------
-
-  /** Recompute setBits by scanning the entire bit array. */
   private recountSetBits(): void {
     let count = 0;
     for (let i = 0; i < this.bitArray.length; i++) {
@@ -352,7 +225,6 @@ export class BloomFilter {
     this.setBits = count;
   }
 
-  /** Assert that two filters share identical configuration. */
   private assertCompatible(other: BloomFilter): void {
     if (this.m !== other.m || this.k !== other.k || this.seed !== other.seed) {
       throw new Error(
@@ -363,14 +235,6 @@ export class BloomFilter {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Module-private helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Produce a type-prefixed key to prevent cross-type collisions.
- * e.g. number 0 -> "n:0", string "0" -> "s:0", boolean false -> "b:false"
- */
 function typeKey(item: string | number | boolean): string {
   switch (typeof item) {
     case "string":

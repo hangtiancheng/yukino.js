@@ -183,7 +183,7 @@ describe("createRouter — location", () => {
     router.dispose();
     globalThis.history.back();
     await new Promise((r) => setTimeout(r, 30));
-    expect(router.location.pathname).toBe("/y"); // no commit after dispose
+    expect(router.location.pathname).toBe("/y");
     router = undefined;
   });
 });
@@ -231,7 +231,7 @@ describe("basename", () => {
     });
     expect(router.match?.route.component).toBe(Home);
     expect(router.match?.pathname).toBe("/home");
-    expect(router.location.pathname).toBe("/home"); // logical (RR semantics)
+    expect(router.location.pathname).toBe("/home");
     await router.navigate("/users");
     expect(globalThis.location.pathname).toBe("/app/users");
     expect(router.location.pathname).toBe("/users");
@@ -303,10 +303,10 @@ describe("blockers", () => {
     router = createRouter([]);
     await router.navigate("/keep");
     await router.navigate("/leave");
-    router.block((next) => next.pathname !== "/keep"); // block going back to /keep
+    router.block((next) => next.pathname !== "/keep");
     globalThis.history.back();
     await new Promise((r) => setTimeout(r, 50));
     await poll(() => globalThis.location.pathname === "/leave");
-    expect(router.location.pathname).toBe("/leave"); // location never moved
+    expect(router.location.pathname).toBe("/leave");
   });
 });

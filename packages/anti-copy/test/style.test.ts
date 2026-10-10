@@ -29,11 +29,8 @@ describe("style injection", () => {
     const style = document.head.querySelector("style[yukino-anti-copy]");
     expect(style).not.toBeNull();
     const css = style?.textContent;
-    // Global disable resists page-level overrides and iOS long-press.
     expect(css).toContain("user-select: none !important");
     expect(css).toContain("-webkit-touch-callout: none");
-    // Exclusions re-enable selection for the region AND its descendants
-    // (user-select does not inherit past an explicit none).
     expect(css).toContain(':is(div[class*="language-"]) *');
     expect(css).toContain("user-select: text !important");
     expect(css).toContain(":is(input), :is(input) *");
@@ -49,8 +46,6 @@ describe("style injection", () => {
     const css = document.head.querySelector(
       "style[yukino-anti-copy]",
     )?.textContent;
-    // Without :is(), ".a, .b" would expand to ".a, .b, .a, .b *" and the
-    // descendants of .a would stay unselectable.
     expect(css).toContain(":is(.a, .b), :is(.a, .b) *");
   });
 
@@ -86,7 +81,6 @@ describe("style injection", () => {
       document.head.querySelectorAll("style[yukino-anti-copy]").length,
     ).toBe(2);
     instance.disable();
-    // The second instance's protection must survive the first's teardown.
     expect(
       document.head.querySelectorAll("style[yukino-anti-copy]").length,
     ).toBe(1);
@@ -131,9 +125,7 @@ describe("style injection", () => {
   it("replace mode leaves selection possible by default", () => {
     instance = createAntiCopy({ mode: "replace" });
     instance.enable();
-    // selectStyle defaults off in replace mode: no user-select stylesheet…
     expect(document.head.querySelector("style[yukino-anti-copy]")).toBeNull();
-    // …and selectstart is not intercepted.
     const event = new Event("selectstart", {
       bubbles: true,
       cancelable: true,

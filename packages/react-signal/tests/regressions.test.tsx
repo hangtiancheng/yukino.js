@@ -1,11 +1,3 @@
-/**
- * Regression tests for the 2026-08 code-review fixes:
- * - store: read-only getState() proxy, untracked setState updater
- * - hooks: onCleanup slot disposal across HMR swaps, hook-count growth
- *   warning, shrink slot disposal
- * - hmr-inject: named default declarations keep their module-scope binding
- * - bundler integrations: production builds skip HMR injection
- */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, unmount } from "../src/jsx/reconcile";
 import { signal, effect } from "../src/reactive";
@@ -31,10 +23,6 @@ afterEach(() => {
   host.remove();
 });
 
-// ============================================================
-// Store — read-only state proxy
-// ============================================================
-
 describe("store — getState() is read-only", () => {
   it("throws on direct writes instead of desyncing the mirror", () => {
     const store = createStore<{ count: number }>(() => ({ count: 0 }));
@@ -45,7 +33,6 @@ describe("store — getState() is read-only", () => {
       delete (store.getState() as { count?: number }).count;
     }).toThrow(/read-only/);
 
-    // State stays consistent — a later legitimate write still notifies.
     const listener = vi.fn();
     store.subscribe(listener);
     store.setState({ count: 5 });
@@ -67,13 +54,9 @@ describe("store — setState(updater) is untracked", () => {
     expect(runs).toBe(1);
     expect(store.getState().b).toBe(1);
     store.setState({ a: 10 });
-    expect(runs).toBe(1); // updater read of `a` must not have subscribed
+    expect(runs).toBe(1);
   });
 });
-
-// ============================================================
-// Hooks — onCleanup across HMR swaps
-// ============================================================
 
 describe("onCleanup — HMR swap semantics", () => {
   it("runs the old callback once at swap and the new one once at unmount", () => {
@@ -89,17 +72,13 @@ describe("onCleanup — HMR swap semantics", () => {
     }
     render(<VOld />, host);
     hotSwapByComponent(VOld, VNew);
-    expect(cleanOld).toHaveBeenCalledTimes(1); // slot disposed at swap
+    expect(cleanOld).toHaveBeenCalledTimes(1);
     expect(cleanNew).not.toHaveBeenCalled();
     unmount(host);
-    expect(cleanOld).toHaveBeenCalledTimes(1); // no duplicate at unmount
+    expect(cleanOld).toHaveBeenCalledTimes(1);
     expect(cleanNew).toHaveBeenCalledTimes(1);
   });
 });
-
-// ============================================================
-// Hooks — rules-of-hooks count checks
-// ============================================================
 
 describe("hook count changes", () => {
   it("warns when a render uses MORE hooks than the previous one", () => {
@@ -134,16 +113,12 @@ describe("hook count changes", () => {
     }
     render(<ShrinkingHooks />, host);
     expect(seen).toEqual([0]);
-    flag.value = false; // shrink — the effect slot must be disposed
+    flag.value = false;
     source.value = 1;
     expect(seen).toEqual([0]);
     warn.mockRestore();
   });
 });
-
-// ============================================================
-// hmr-inject — named default declarations
-// ============================================================
 
 describe("hmr-inject — named declarations keep their binding", () => {
   it("preserves `export default function Name(){}` in module scope", () => {
@@ -173,10 +148,6 @@ describe("hmr-inject — named declarations keep their binding", () => {
     );
   });
 });
-
-// ============================================================
-// Bundler integrations — production builds skip injection
-// ============================================================
 
 interface CallableVitePlugin {
   configResolved(config: { command: string }): void;

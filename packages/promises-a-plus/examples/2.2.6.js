@@ -1,5 +1,4 @@
 // @ts-check
-// 2.2.6 一个 promise 的 then 方法可以多次调用
 
 const promise = new Promise((resolve) => {
   console.log("promise is pending");

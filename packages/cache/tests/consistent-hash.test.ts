@@ -88,7 +88,6 @@ describe("ConHashMap", () => {
     m.add("6", "4", "2");
     m.remove("4");
 
-    // after removing "4", gets should still work
     expect(m.get("11")).not.toBe("");
   });
 
@@ -165,15 +164,12 @@ describe("ConHashMap", () => {
 
     m.add("a", "b", "c");
 
-    // send >1000 requests to trigger rebalance on the 1s interval
     for (let i = 0; i < 1200; i++) {
       m.get("key-a");
     }
 
-    // wait for the balancer timer to fire
     await new Promise((r) => setTimeout(r, 1500));
 
-    // ring should still work after rebalance
     expect(m.get("key")).not.toBe("");
   });
 

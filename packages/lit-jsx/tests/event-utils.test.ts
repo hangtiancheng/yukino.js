@@ -36,14 +36,11 @@ describe("event name mapping", () => {
   });
 
   it("derives names for events that are not in any explicit map", () => {
-    // Newer DOM events work without extending the file.
     expect(getNativeEventName("onScrollEnd")).toBe("scrollend");
     expect(getNativeEventName("onPointerRawUpdate")).toBe("pointerrawupdate");
   });
 
   it("returns undefined for non-event props", () => {
-    // The `on` + capital-letter guard keeps lookalike props from binding
-    // bogus listeners (e.g. `once` must not bind an event named "ce").
     expect(getNativeEventName("only")).toBeUndefined();
     expect(getNativeEventName("once")).toBeUndefined();
     expect(getNativeEventName("on")).toBeUndefined();

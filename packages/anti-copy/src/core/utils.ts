@@ -1,48 +1,30 @@
-/** Whether the current runtime provides a usable DOM. */
 export function isBrowser(): boolean {
   return typeof window !== "undefined" && typeof document !== "undefined";
 }
 
 const ELEMENT_NODE = 1;
 
-/**
- * Converts an event target to an element via duck typing instead of
- * `instanceof`, so nodes from other realms (iframes, injected documents)
- * still resolve. Text nodes fall back to their parent element, crossing
- * a shadow-root boundary to its host when needed.
- */
 function toElement(target: EventTarget | null): Element | null {
   if (!target || typeof (target as Node).nodeType !== "number") return null;
   const node = target as Node;
   if (node.nodeType === ELEMENT_NODE) return node as Element;
   if (node.parentElement) return node.parentElement;
-  // A text node directly under a ShadowRoot has no parentElement.
   const parent = node.parentNode;
   const host = parent && (parent as ShadowRoot).host;
   return host ?? null;
 }
 
-/** Shadow host of the element's root, used to continue ancestor walks upward. */
 function shadowHost(el: Element): Element | null {
   const root = el.getRootNode?.();
   const host = root && (root as ShadowRoot).host;
   return host && host !== el ? host : null;
 }
 
-/**
- * Resolves the most specific element for an event. `composedPath()` looks
- * through open shadow roots, where `event.target` is retargeted to the host.
- */
 export function eventElement(event: Event): Element | null {
   const path = event.composedPath?.();
   return toElement(path && path.length > 0 ? path[0] : event.target);
 }
 
-/**
- * Returns `true` when the target falls inside a region excluded from
- * protection. Walks up through shadow boundaries; non-node targets
- * (window, document) are never excluded.
- */
 export function isExcluded(
   target: EventTarget | null,
   selectors: string[],
@@ -52,18 +34,13 @@ export function isExcluded(
     for (const selector of selectors) {
       try {
         if (el.closest(selector) !== null) return true;
-      } catch {
-        // Invalid selectors must not break protection for the rest.
-      }
+      } catch {}
     }
-    // `closest` stops at the shadow root; resume from the host.
     el = shadowHost(el);
   }
   return false;
 }
 
-// Input types without free-text entry: they carry no selectable text, so
-// exempting them would only punch needless holes into protection.
 const NON_TEXT_INPUT_TYPES = new Set([
   "button",
   "checkbox",
@@ -76,18 +53,13 @@ const NON_TEXT_INPUT_TYPES = new Set([
   "reset",
   "submit",
 ]);
-// The contenteditable attribute value is ASCII case-insensitive in HTML.
 const EDITABLE_VALUES = new Set(["", "true", "plaintext-only"]);
 
-/** Whether the target is an editable control where shortcuts must stay functional. */
 export function isEditable(target: EventTarget | null): boolean {
   let el = toElement(target);
   while (el) {
     if (el.tagName === "TEXTAREA") return true;
     if (el.tagName === "INPUT") {
-      // The `type` property normalizes unknown values to "text"; a missing
-      // property (duck-typed foreign element) defaults to editable, the
-      // safe direction for preserving native behavior.
       const type = (el as HTMLInputElement).type?.toLowerCase() ?? "text";
       if (!NON_TEXT_INPUT_TYPES.has(type)) return true;
     }
@@ -98,15 +70,6 @@ export function isEditable(target: EventTarget | null): boolean {
   return false;
 }
 
-/**
- * Whether the current selection falls entirely inside excluded regions.
- * Judging only `event.target` would let a selection that starts inside an
- * excluded region and extends into protected content leak through, because
- * the copy event fires on the selection's start node.
- *
- * Returns `null` when there is no usable (non-collapsed) selection, so the
- * caller can fall back to a target-based check.
- */
 export function isSelectionExcluded(
   doc: Document,
   selectors: string[],
@@ -123,7 +86,6 @@ export function isSelectionExcluded(
   return true;
 }
 
-/** Escapes text for safe embedding in an HTML clipboard flavor. */
 export function escapeHtml(text: string): string {
   return text
     .replace(/&/g, "&amp;")

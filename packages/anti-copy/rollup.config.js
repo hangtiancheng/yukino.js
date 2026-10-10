@@ -16,14 +16,6 @@ const destSkill = fileURLToPath(
   new URL("skills/yukino-anti-copy", import.meta.url),
 );
 
-/**
- * Removes stale dist artifacts before the first build config writes output.
- * Only used in the JS config — the dts config runs second and must not wipe
- * the freshly-built JS bundles.
- */
-
-/**
- * @return {import("rollup").Plugin} */
 function cleanThenInstall() {
   return {
     name: "clean-then-install",
@@ -40,15 +32,12 @@ function cleanThenInstall() {
   };
 }
 
-/** @type {import("rollup").InputOption} */
 const input = {
   index: "src/index.ts",
 };
 
-/** @type {import("rollup").ExternalOption} */
 const external = [/^react(\/|$)/, /^vue(\/|$)/];
 
-/** @type {import("rollup").RollupOptions[]} */
 export default [
   {
     input,
@@ -59,8 +48,6 @@ export default [
         entries: [{ find: "@", replacement: srcDir }],
       }),
       typescript({ tsconfig: "./tsconfig.build.json" }),
-      // drop_debugger defaults to true and would strip the CSP fallback
-      // probe in src/core/devtools.ts out of the bundles.
       terser({ compress: { drop_debugger: false } }),
     ],
     output: [

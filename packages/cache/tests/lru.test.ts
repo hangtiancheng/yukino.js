@@ -154,15 +154,12 @@ describe("LruStore promotion and eviction", () => {
 
     store.set("a", tv("value-a"));
     store.set("b", tv("value-b"));
-    // get promotes a and b to L2
     store.get("a");
     store.get("b");
 
-    // overflow L1 with new keys
     store.set("c", tv("value-c"));
     store.set("d", tv("value-d"));
 
-    // promoted keys should still be accessible from L2
     const [va, okA] = store.get("a");
     expect(okA).toBe(true);
     expect((va as TestValue).s).toBe("value-a");

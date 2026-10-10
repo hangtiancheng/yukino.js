@@ -81,8 +81,6 @@ describe("spread directive cleanup", () => {
     );
     input.dispatchEvent(new Event("input"));
     expect(handler).toHaveBeenCalledOnce();
-    // Nullish counts as omitted: the dropped property is reset like any
-    // removed prop (undefined through the IDL long setter coerces to 0).
     expect(input.maxLength).toBe(0);
     expect(input.hasAttribute("data-x")).toBe(false);
     expect(active).toEqual({
@@ -93,16 +91,8 @@ describe("spread directive cleanup", () => {
   });
 });
 
-// Regression: lit-jsx renders every tag through one shared html template, so
-// when {loading && spinner} flips to {!loading && content}, lit-html treats it
-// as a same-template update and REUSES the spinner's DOM node for the content
-// div. Dropped property-class props must be reset on the reused node instead
-// of leaking across logically different elements.
 describe("spread directive property cleanup on reused elements", () => {
   function app(loading: boolean) {
-    // Exactly what <div>{loading && spinner}{!loading && content}</div>
-    // compiles to: parseChildren filters the `false` slots, so both renders
-    // commit a 1-item children array into the same child part.
     return jsx("div", {
       children: [
         loading && jsx("div", { class: "spinner", children: "Loading" }),
@@ -161,8 +151,6 @@ describe("spread directive property cleanup on reused elements", () => {
     render(jsx("div", { children: [jsx("input", {})] }) as never, container);
     const input = container.firstElementChild!
       .firstElementChild as HTMLInputElement;
-    // undefined through the IDL long setter coerces to 0 — the same value
-    // lit-html's own `.prop=${nothing}` binding produces.
     expect(input.maxLength).toBe(0);
   });
 

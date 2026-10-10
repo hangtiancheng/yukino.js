@@ -8,7 +8,6 @@ import {
 import { useSignal } from "../src/hooks";
 import { render, unmount } from "../src/jsx/reconcile";
 
-/** Component factory: label distinguishes versions; count state via useSignal. */
 function makeCounter(label: string): Component {
   return function Counter() {
     const count = useSignal(0);
@@ -29,9 +28,6 @@ describe("HMR", () => {
     host.remove();
   });
 
-  // ============================================================
-  // hotSwapByComponent
-  // ============================================================
   describe("hotSwapByComponent", () => {
     it("swaps live instances in place, preserving useSignal state", () => {
       let captured: { value: number } | undefined;
@@ -48,7 +44,6 @@ describe("HMR", () => {
       const swapped = hotSwapByComponent(V1, V2);
       expect(swapped).toBe(true);
 
-      // Same instance, same signal slot — the new code renders count=42.
       expect(host.querySelector(".old")).toBeNull();
       expect(host.querySelector(".new")!.textContent).toBe("count=42");
     });
@@ -63,7 +58,7 @@ describe("HMR", () => {
       render(createVNode(V1, {}), host);
 
       hotSwapByComponent(V1, makeCounter("new"));
-      captured!.value = 7; // the preserved signal still drives renders
+      captured!.value = 7;
       expect(host.querySelector(".new")!.textContent).toBe("count=7");
     });
 
@@ -75,8 +70,6 @@ describe("HMR", () => {
       expect(host.querySelector(".new")).not.toBeNull();
       const domBefore = host.querySelector(".new")!;
 
-      // The caller still holds V1 (stale import) — canonical matching must
-      // keep the same instance instead of remounting.
       render(createVNode(V1, {}), host);
       expect(host.querySelector(".new")).toBe(domBefore);
     });
@@ -97,9 +90,6 @@ describe("HMR", () => {
     });
   });
 
-  // ============================================================
-  // hmr-inject — snippet generation
-  // ============================================================
   describe("hmr-inject", () => {
     it("detects component module sources via a line-leading export default", () => {
       expect(isYukinoComponentSource("export default function Home() {}")).toBe(
@@ -125,7 +115,6 @@ describe("HMR", () => {
     it("guards the snippet with typeof function checks (non-component exports no-op)", () => {
       const src = "export default { just: 'config' };";
       const result = injectComponentHmrSnippet(src, "vite");
-      // The transform applies (broad gate), but the runtime guard is present.
       expect(result).toContain('typeof oldComponent === "function"');
       expect(result).toContain('typeof newComponent === "function"');
     });
@@ -159,7 +148,6 @@ describe("HMR", () => {
         `}`,
       ].join("\n");
       const result = injectComponentHmrSnippet(src, "vite");
-      // Named declarations keep their module-scope binding.
       expect(result).toContain("function Note() {");
       expect(result).toContain("const __yukino_component__ = Note;");
       expect(result).toContain("hotSwapByComponent");

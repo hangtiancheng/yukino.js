@@ -64,7 +64,7 @@ describe("createStore - subscribe", () => {
     const listener = vi.fn();
     store.subscribe(listener);
 
-    store.setState({ count: 0 }); // same as initial
+    store.setState({ count: 0 });
 
     expect(listener).not.toHaveBeenCalled();
     store.destroy();
@@ -83,7 +83,6 @@ describe("createStore - subscribe", () => {
     store.subscribe(listener);
 
     store.destroy();
-    // setState after destroy is a no-op
     store.setState({ count: 99 });
     expect(listener).not.toHaveBeenCalled();
   });
@@ -115,7 +114,7 @@ describe("getState (tracked proxy)", () => {
     });
     expect(runs).toBe(1);
 
-    store.setState({ step: 5 }); // unread key → no re-run
+    store.setState({ step: 5 });
     expect(runs).toBe(1);
 
     store.setState({ count: 1 });

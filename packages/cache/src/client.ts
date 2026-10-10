@@ -3,12 +3,7 @@ import { proto } from "./proto/index.js";
 import { Peer } from "./peers.js";
 
 export interface ClientOptions {
-  /** Per-call deadline in milliseconds. Defaults to 3000. */
   deadlineMs?: number;
-  /**
-   * Mark outgoing calls as peer-to-peer traffic (x-peer-request metadata)
-   * so the receiving server does not re-propagate the write.
-   */
   peerRequest?: boolean;
 }
 

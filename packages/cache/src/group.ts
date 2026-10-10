@@ -66,15 +66,6 @@ export interface GroupStats {
 
 const groups: Map<string, Group> = new Map();
 
-/**
- * Group implements a read-through cache with cache-aside write propagation.
- *
- * Consistency model: set/delete are applied locally and forwarded
- * asynchronously to the single peer that owns the key on the hash ring
- * (fire-and-forget). Other nodes are NOT notified, so their local caches
- * may serve stale values until eviction or expiration. This is weak,
- * eventually-consistent semantics, not replication.
- */
 export class Group {
   private name: string;
   private getter: Getter;
@@ -230,8 +221,6 @@ export class Group {
   }
 
   private async load(ctx: AbortSignal, key: string): Promise<ByteView> {
-    // stats and cache population run inside the single-flight callback so
-    // they execute once per actual load, not once per waiting caller
     return this.loader.do(key, async () => {
       const startTime = Date.now();
       const view = await this.loadData(ctx, key);

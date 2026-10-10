@@ -77,7 +77,7 @@ describe("useStore", () => {
     render(<Counter />, container);
     expect(renders).toBe(1);
 
-    store.setState({ step: 9 }); // not selected → no re-render
+    store.setState({ step: 9 });
     await flush();
     expect(renders).toBe(1);
 
@@ -94,9 +94,6 @@ describe("useStore", () => {
     const store = makeStore();
     const container = createContainer();
 
-    // Writer's mount effect runs BEFORE Reader's subscribe effect (effects
-    // flush in child order) — without the post-subscribe re-check Reader
-    // would render 0 forever.
     function Writer() {
       useEffect(() => {
         store.setState({ count: 1 });
@@ -176,7 +173,7 @@ describe("useStore", () => {
 
     store.setState({ count: 42 });
     await flush();
-    expect(renders).toBe(1); // no ghost re-render after unmount
+    expect(renders).toBe(1);
 
     store.destroy();
   });

@@ -5,10 +5,6 @@ import { hotSwapByComponent, registerRoot, unregisterRoot } from "./hmr";
 import { useCallback, useEffect, useMemo, useRef, useState } from "./hooks";
 import type { Root } from "./hooks";
 
-// Global HMR handle — THE single registration point. Auto-injected HMR
-// snippets (see ./vite.ts) call it via `globalThis.__react_hmr__`
-// instead of importing "@yukino.js/react" (an import inside an HMR callback
-// would register the module as an MF shared consumer → ChunkLoadError).
 const globalScope = globalThis as {
   __react_hmr__?: { hotSwapByComponent: typeof hotSwapByComponent };
 };
@@ -18,17 +14,9 @@ if (!globalScope.__react_hmr__) {
 
 const roots = new WeakMap<Node, Root>();
 
-/** setState only marks the root dirty; multiple updates within the same microtask are batched into a single re-render */
 const dirtyRoots = new Set<Root>();
 let flushScheduled = false;
 
-/**
- * Runaway-update guard (React's "Maximum update depth exceeded"). A cascade
- * wave is a flush that ends with new updates already scheduled — normal for
- * effect-driven follow-up state, fatal when it never settles: the microtask
- * loop would starve the event loop and freeze the page. Throwing from the
- * offending schedule call breaks the loop with a single diagnostic error.
- */
 const MAX_CASCADE_WAVES = 50;
 let cascadeWaves = 0;
 let inFlush = false;
@@ -64,7 +52,6 @@ function scheduleFlush(): void {
   });
 }
 
-/** The first call mounts; every subsequent call diffs against the previous instance tree; passing null unmounts */
 export function render(element: Children, container: Node): void {
   let root = roots.get(container);
   if (root === undefined) {

@@ -1,10 +1,3 @@
-/**
- * Component props semantics: real object identity pass-through, Signal props
- * staying wrapped, proxy spread, camelCase keys, deep composition, and
- * component-vs-element prop handling (class/style are ordinary props on
- * components — there is no host element).
- */
-
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, unmount } from "../src/jsx/reconcile";
 import type { Component } from "../src/jsx/vnode";
@@ -49,7 +42,7 @@ describe("props — identity & shapes", () => {
     }
     render(<Child config={config} rows={rows} helper={helper} />, host);
 
-    expect(received!["config"]).toBe(config); // same reference
+    expect(received!["config"]).toBe(config);
     expect(received!["rows"]).toBe(rows);
     expect(received!["helper"]).toBe(helper);
   });
@@ -64,7 +57,7 @@ describe("props — identity & shapes", () => {
     render(<Child count={count} />, host);
     expect(receivedSignal).toBe(count);
     expect(host.querySelector("p")!.textContent).toBe("1");
-    count.value = 5; // direct subscription — child re-renders, parent-free
+    count.value = 5;
     expect(host.querySelector("p")!.textContent).toBe("5");
   });
 
@@ -108,9 +101,7 @@ describe("props — identity & shapes", () => {
     }
     render(<Child class="from-parent" style="color:red" />, host);
     expect(received).toEqual({ class: "from-parent", style: "color:red" });
-    // The child decides where they land:
     expect(host.querySelector("p")!.getAttribute("class")).toBe("from-parent");
-    // No auto-generated wrapper carries them:
     expect(host.querySelector("div")).toBeNull();
   });
 });
@@ -122,7 +113,7 @@ describe("props — reactive updates", () => {
     const readsA: string[] = [];
     function Child(props: { a: string; b: string }) {
       readsA.push(props.a);
-      return <p>{props.a}</p>; // reads only `a`
+      return <p>{props.a}</p>;
     }
     function Parent() {
       return <Child a={a.value} b={b.value} />;
@@ -130,7 +121,7 @@ describe("props — reactive updates", () => {
     render(<Parent />, host);
     expect(readsA).toEqual(["a1"]);
 
-    b.value = "b2"; // parent re-renders; child's read key unchanged
+    b.value = "b2";
     expect(readsA).toEqual(["a1"]);
 
     a.value = "a2";
@@ -152,7 +143,7 @@ describe("props — reactive updates", () => {
     }
     render(<Parent />, host);
     expect(childRenders).toBe(1);
-    tick.value++; // parent re-renders, same cfg reference pushed
+    tick.value++;
     expect(childRenders).toBe(1);
   });
 
@@ -165,7 +156,7 @@ describe("props — reactive updates", () => {
     }
     function Parent() {
       tick.value;
-      return <Child cfg={{ n: 1 }} />; // fresh identity every parent render
+      return <Child cfg={{ n: 1 }} />;
     }
     render(<Parent />, host);
     expect(childRenders).toBe(1);
@@ -197,7 +188,6 @@ describe("composition", () => {
     render(<Root />, host);
     const main = host.querySelector("main")!;
     expect(stripAnchors(main.innerHTML)).toBe("<b>10</b><b>11</b>");
-    // All <b> are direct children of <main> — zero wrappers.
     expect(main.querySelectorAll(":scope > b")).toHaveLength(2);
   });
 
@@ -221,7 +211,7 @@ describe("composition", () => {
     expect(host.querySelector("button")).toBeNull();
     expect(host.querySelector("p")!.textContent).toBe("B");
 
-    mode.value = "a"; // fresh A — state reset (different instance)
+    mode.value = "a";
     expect(host.querySelector("button")!.textContent).toBe("A:0");
   });
 

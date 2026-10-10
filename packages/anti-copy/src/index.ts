@@ -1,7 +1,3 @@
-/**
- * Framework-agnostic copy / print / DevTools protection for any browser
- * project — React, Vue, plain HTML, ...
- */
 import { createClipboardFeature } from "./core/clipboard";
 import { createContextmenuFeature } from "./core/contextmenu";
 import { createDevtoolsFeature } from "./core/devtools";
@@ -32,19 +28,11 @@ export { DEFAULT_REPLACE_TEXT } from "./core/options";
 export { isBrowser } from "./core/utils";
 
 const NOOP_INSTANCE: AntiCopyInstance = {
-  enable() {
-    /** noop */
-  },
-  disable() {
-    /** noop */
-  },
-  destroy() {
-    /** noop */
-  },
+  enable() {},
+  disable() {},
+  destroy() {},
   isEnabled: () => false,
-  update() {
-    /** noop */
-  },
+  update() {},
 };
 
 function buildFeatures(options: AntiCopyOptions): Feature[] {
@@ -59,7 +47,6 @@ function buildFeatures(options: AntiCopyOptions): Feature[] {
   return features;
 }
 
-/** Merge an options patch, deep-merging the nested devtools object. */
 function mergeOptions(
   current: AntiCopyOptions,
   patch: Partial<AntiCopyOptions>,
@@ -74,15 +61,6 @@ function mergeOptions(
   return merged;
 }
 
-/**
- * Creates a copy-protection controller. Framework agnostic: only relies on
- * standard DOM APIs and is safe to import (but inert) in non-browser
- * environments such as SSR — a no-op instance is returned there.
- *
- * Note: client-side copy protection is a deterrent, not a security boundary.
- * Content remains accessible through view-source, disabled JavaScript, or
- * direct HTTP requests.
- */
 export function createAntiCopy(
   options: AntiCopyOptions = {},
 ): AntiCopyInstance {
@@ -99,19 +77,14 @@ export function createAntiCopy(
       const attached: Feature[] = [];
       try {
         for (const feature of features) {
-          // Pushed before attach so a mid-attach failure is also rolled
-          // back (detach implementations are idempotent).
           attached.push(feature);
           feature.attach();
         }
       } catch (error) {
-        // Roll back so a partial failure never leaks unremovable listeners.
         for (const feature of attached) {
           try {
             feature.detach();
-          } catch {
-            /* best effort */
-          }
+          } catch {}
         }
         throw error;
       }
@@ -119,7 +92,6 @@ export function createAntiCopy(
     },
     disable() {
       if (!enabled) return;
-      // Detach every feature even if one throws.
       let firstError: unknown;
       for (const feature of features) {
         try {

@@ -112,8 +112,6 @@ describe("clipboard", () => {
   it("a selection spanning excluded and protected regions is blocked", () => {
     document.body.innerHTML =
       '<div class="allowed"><p id="a">x</p></div><p id="b">y</p>';
-    // Selection starts inside .allowed but extends past it: the common
-    // ancestor is <body>, so a target-only check would leak content.
     stubSelection("xy", document.body);
     instance = createAntiCopy({
       excludeSelectors: [".allowed"],
@@ -168,7 +166,6 @@ describe("clipboard", () => {
   it("a leftover selection in an excluded region does not exempt dragging protected content", () => {
     document.body.innerHTML =
       '<div class="allowed" id="ok">code</div><img id="img" />';
-    // Selection lives entirely inside the excluded region…
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     stubSelection("code", document.querySelector(".allowed")!);
     instance = createAntiCopy({
@@ -176,7 +173,6 @@ describe("clipboard", () => {
       selectStyle: false,
     });
     instance.enable();
-    // …but the dragged node is protected content: must stay blocked.
     const event = new Event("dragstart", { bubbles: true, cancelable: true });
     document.getElementById("img")?.dispatchEvent(event);
     expect(event.defaultPrevented).toBe(true);

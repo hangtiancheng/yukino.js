@@ -69,7 +69,6 @@ export async function register(
       if (lease) await lease.revoke();
       await client.delete().key(key);
     } catch {
-      // ignore cleanup errors
     } finally {
       client.close();
     }
@@ -133,7 +132,6 @@ export class ServiceDiscovery {
     });
 
     this.watcher.on("delete", (kv) => {
-      // delete events carry no value; the address is part of the key
       const addr = this.addrFromKey(kv.key.toString());
       if (addr) this.onDelete(addr);
     });

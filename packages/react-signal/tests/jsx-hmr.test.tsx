@@ -1,9 +1,3 @@
-/**
- * JSX-level HMR behavior: hot-swapping components mounted as JSX tags —
- * state preservation, handler freshness, effect re-runs, and nested
- * parent/child swaps with stale imports.
- */
-
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { hotSwapByComponent } from "../src/hmr";
 import { render, unmount } from "../src/jsx/reconcile";
@@ -52,12 +46,10 @@ describe("JSX HMR", () => {
     };
     hotSwapByComponent(CounterV1, CounterV2);
 
-    // New JSX, preserved state.
     const btn = host.querySelector("button")!;
     expect(btn.className).toBe("v2");
     expect(btn.textContent).toBe("v2:2");
 
-    // The new closure (step +10) is live.
     click(btn);
     expect(btn.textContent).toBe("v2:12");
   });
@@ -88,8 +80,6 @@ describe("JSX HMR", () => {
     expect(host.querySelector("em.b2")!.textContent).toBe("b2:hello");
     const em = host.querySelector("em.b2")!;
 
-    // Parent re-render still references BadgeV1 (stale import) — the alias
-    // map must match the live instance and just push props, not remount.
     text.value = "world";
     expect(host.querySelector("em.b2")).toBe(em);
     expect(em.textContent).toBe("b2:world");
@@ -115,7 +105,6 @@ describe("JSX HMR", () => {
       return <p>v2</p>;
     };
     hotSwapByComponent(V1, V2);
-    // Old effect cleaned up, new effect ran against the swapped DOM.
     expect(log).toEqual(["v1-run", "v1-clean", "v2-run"]);
     expect(host.querySelector("p")!.textContent).toBe("v2");
 
@@ -166,7 +155,6 @@ describe("JSX HMR", () => {
     expect(host.querySelector("button")!.className).toBe("v3");
     expect(host.querySelector("button")!.textContent).toBe("v3:1");
 
-    // Root re-render with the ORIGINAL import — alias chain resolves to v3.
     const btn = host.querySelector("button")!;
     render(<V1 />, host);
     expect(host.querySelector("button")).toBe(btn);
@@ -184,7 +172,7 @@ describe("JSX HMR", () => {
       return <p>v2</p>;
     };
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
-    expect(hotSwapByComponent(V1, V2)).toBe(false); // no live instances
+    expect(hotSwapByComponent(V1, V2)).toBe(false);
     expect(host.innerHTML).toBe("");
     spy.mockRestore();
   });

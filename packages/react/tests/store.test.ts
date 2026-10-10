@@ -77,7 +77,7 @@ describe("createStore - subscribe", () => {
     const listener = vi.fn();
     store.subscribe(listener);
 
-    store.setState({ count: 0 }); // same as initial
+    store.setState({ count: 0 });
 
     expect(listener).not.toHaveBeenCalled();
     store.destroy();
@@ -95,7 +95,7 @@ describe("createStore - subscribe", () => {
     const listener = vi.fn();
     store.subscribe((state) => state.count, listener);
 
-    store.setState({ step: 7 }); // unrelated key
+    store.setState({ step: 7 });
     expect(listener).not.toHaveBeenCalled();
 
     store.setState({ count: 3 });
@@ -130,7 +130,7 @@ describe("createStore - setState semantics", () => {
     expect(store.getState().step).toBe(undefined);
     expect(typeof store.getState().increment).toBe("function");
 
-    store.getState().increment(); // count + undefined-step → NaN, but callable
+    store.getState().increment();
     store.destroy();
   });
 

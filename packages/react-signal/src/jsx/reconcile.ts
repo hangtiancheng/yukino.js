@@ -1,37 +1,3 @@
-/**
- * VNode → DOM reconciler with hostless component instances.
- *
- * `render(vnode, container)` mounts a JSX tree; every FUNCTION tag becomes a
- * component instance (React semantics — no wrapper element). An instance's
- * rendered children are spliced directly into the parent host element as a
- * contiguous range terminated by a persistent comment anchor (`end`), so the
- * output DOM is identical to React's.
- *
- * Reactivity: each instance owns ONE signals effect. The component function
- * re-runs inside it (the body IS the tracked template — props reads, signal
- * reads, `State.get`, store reads all subscribe), then the instance's slice
- * is diffed in place. Parents and children re-render independently.
- *
- * Range invariants:
- * - An instance's DOM is `collectDoms(nodes) ++ [end]`, contiguous in `host`.
- * - Slice ordering uses a REVERSE insertion pass anchored at `end` (the slice
- *   does not own the host, so there is no forward cursor). Element children
- *   use the same pass with a `null` anchor (append).
- * - Parents treat a component range as an opaque atomic unit when moving or
- *   removing keyed siblings.
- *
- * Re-entrancy: new-instance mounts and prop pushes are DEFERRED ops flushed
- * after the slice's DOM commit inside `untracked()`; prop writes are batched,
- * so a child invalidated mid-pass renders after the parent's pass completes,
- * exactly once.
- *
- * Events are per-node listeners with a stable proxy whose `.current` handler
- * is swapped every render (closures never go stale); handler calls run inside
- * `batch()`. Attribute diffing uses a RESOLVED snapshot (Signals unwrapped,
- * class/style normalized) so Signal-valued attributes update correctly.
- * `raw()` HTML blocks are the explicit trusted-HTML path.
- */
-
 import { batch, untracked, signal, effect, Signal } from "../reactive";
 import { devWarn } from "../utils";
 import { SVG_NS, MATH_NS, strSafe } from "../common";
@@ -54,10 +20,6 @@ import {
   type JSXNode,
 } from "./vnode";
 import type { AnyFunc, RefValue } from "../types";
-
-// ============================================================
-// Normalized items and rendered-node bookkeeping
-// ============================================================
 
 const TEXT = 1;
 const ELEMENT = 2;
@@ -86,7 +48,6 @@ interface NComponent {
 }
 type NItem = NText | NElement | NRaw | NComponent;
 
-/** Stable per-(node,type) listener whose current handler swaps per render. */
 interface EventBinding {
   proxy: EventListener;
   current: AnyFunc | undefined;
@@ -101,7 +62,6 @@ interface RElement {
   k: typeof ELEMENT;
   type: string;
   key: string | undefined;
-  /** Resolved attribute snapshot from the last render (Signals unwrapped). */
   attrs: Record<string, unknown>;
   dom: Element;
   children: RNode[];
@@ -113,23 +73,17 @@ interface RRaw {
   html: string;
   doms: ChildNode[];
 }
-/** A mounted component instance and its rendered slice. */
 interface RComponent {
   k: typeof COMPONENT;
   key: string | undefined;
   instance: Instance;
-  /** Rendered children — direct occupants of `host`, ending at `end`. */
   nodes: RNode[];
-  /** Persistent end anchor — the slice's insertBefore reference. */
   end: Comment;
-  /** The parent host element the slice renders into. */
   host: Element;
-  /** Namespace at the mount position (captured from the parent pass). */
   ns: string | null;
 }
 type RNode = RText | RElement | RRaw | RComponent;
 
-/** Deferred operations flushed after the DOM is committed. */
 type PendingOp =
   | { t: 1; r: RComponent }
   | { t: 2; inst: Instance; props: Record<string, unknown> }
@@ -144,10 +98,6 @@ interface Pass {
   ops: PendingOp[];
 }
 
-// ============================================================
-// Public entry points: render / unmount
-// ============================================================
-
 interface RootRecord {
   vnode: Signal<JSXNode>;
   dispose: () => void;
@@ -155,21 +105,8 @@ interface RootRecord {
   end: Comment;
 }
 
-/** Root records per container element. */
 const roots = new WeakMap<Element, RootRecord>();
 
-/**
- * Render a JSX tree into a container element (React-DOM style).
- *
- * The first call takes ownership of the container (existing content is
- * cleared). Subsequent calls with the same container diff against the
- * previous tree — component instances matched by function identity (and
- * `key`) keep their state; changed props are pushed through per-key signals.
- *
- * Signal children/attributes in the tree are tracked by the root's render
- * effect (or the owning component's), so the DOM stays live without
- * re-calling `render`.
- */
 export function render(node: JSXNode, container: Element): void {
   const existing = roots.get(container);
   if (existing) {
@@ -185,9 +122,6 @@ export function render(node: JSXNode, container: Element): void {
     nodes: [],
     end,
   };
-  // Take ownership only after the first pass succeeds: on a throw,
-  // signals-core disposes the effect and rethrows, and the container stays
-  // unregistered so a later render() can retry cleanly.
   rec.dispose = effect(() => {
     renderRoot(container, rec, rec.vnode.value);
   });
@@ -212,13 +146,6 @@ function renderRoot(
   untracked(() => flushOps(pass.ops));
 }
 
-/**
- * Unmount the tree rendered into a container: dispose the root effect,
- * destroy every instance (effect cleanups, `onCleanup`, refs → null,
- * children before parents), and clear the container.
- *
- * @returns `true` if a tree was mounted on the container.
- */
 export function unmount(container: Element): boolean {
   const rec = roots.get(container);
   if (!rec) return false;
@@ -228,10 +155,6 @@ export function unmount(container: Element): boolean {
   container.textContent = "";
   return true;
 }
-
-// ============================================================
-// Normalization: JSXNode → flat NItem list
-// ============================================================
 
 function normalizeInto(node: JSXNode, out: NItem[]): void {
   if (node == null || typeof node === "boolean" || node === "") return;
@@ -243,8 +166,6 @@ function normalizeInto(node: JSXNode, out: NItem[]): void {
     for (const child of node) normalizeInto(child, out);
     return;
   }
-  // Signal child ({count} without .value) — tracked read subscribes the
-  // enclosing render effect (root or owning component).
   if (node instanceof Signal) {
     normalizeInto(node.value as JSXNode, out);
     return;
@@ -259,9 +180,6 @@ function normalizeInto(node: JSXNode, out: NItem[]): void {
       normalizeInto(props["children"] as JSXNode, out);
       return;
     }
-    // Function component — mounted as an instance, never invoked inline.
-    // Canonicalized ONCE here (HMR alias chain) so the diff hot path
-    // compares plain function identity.
     if (typeof type === "function") {
       out.push({
         k: COMPONENT,
@@ -281,22 +199,15 @@ function normalizeInto(node: JSXNode, out: NItem[]): void {
   devWarn(`Skipped non-renderable child of type "${typeof node}".`);
 }
 
-// ============================================================
-// Keyed children diff
-// ============================================================
-
 function compatible(r: RNode, item: NItem): boolean {
   if (r.k !== item.k) return false;
   if (r.k === ELEMENT) return r.type === (item as NElement).type;
   if (r.k === COMPONENT) {
-    // item.fn is canonicalized at normalize time; instance.fn is updated in
-    // place by HMR swaps — plain identity comparison, no alias walk here.
     return r.instance.fn === (item as NComponent).fn;
   }
   return true;
 }
 
-/** All DOM nodes of an rnode, in tree order (component ranges included). */
 function rnodeDoms(r: RNode): ChildNode[] {
   if (r.k === RAW) return r.doms;
   if (r.k === COMPONENT) {
@@ -320,11 +231,6 @@ function collectComponentDoms(r: RComponent, out: ChildNode[]): void {
   out.push(r.end);
 }
 
-/**
- * Diff one owner's child list. The owner is either an element (owns all of
- * `parentDom`'s children — `endAnchor` is `null`) or a component slice /
- * root (owns the range ending at `endAnchor`).
- */
 function patchChildren(
   parentDom: Element,
   oldList: RNode[],
@@ -333,7 +239,6 @@ function patchChildren(
   ns: string | null,
   endAnchor: ChildNode | null,
 ): RNode[] {
-  // Index old nodes: explicit keys → map (first wins); the rest → positional pool.
   let keyed: Map<string, RNode> | undefined;
   const rest: (RNode | undefined)[] = [];
   for (const r of oldList) {
@@ -389,7 +294,6 @@ function patchChildren(
       : createNode(item, pass, parentDom, ns);
   }
 
-  // Remove unmatched old nodes (instances tear down before their DOM leaves).
   if (keyed) {
     for (const r of keyed.values()) removeRNode(r);
   }
@@ -397,8 +301,6 @@ function patchChildren(
     if (r) removeRNode(r);
   }
 
-  // Order pass: REVERSE walk anchored at `endAnchor` (null = append). Every
-  // node whose next sibling isn't the expected anchor is (re)inserted.
   let ref: ChildNode | null = endAnchor;
   for (let i = result.length - 1; i >= 0; i--) {
     const doms = rnodeDoms(result[i]);
@@ -420,11 +322,6 @@ function removeRNode(r: RNode): void {
   }
 }
 
-/**
- * Destroy an rnode's logical state (no DOM removal — the caller removes the
- * outermost range). Component teardown order: render effect first (no
- * re-entry), then children bottom-up, then the instance's own cleanups.
- */
 function destroyRNode(r: RNode): void {
   switch (r.k) {
     case TEXT:
@@ -448,10 +345,6 @@ function destroyRNode(r: RNode): void {
     }
   }
 }
-
-// ============================================================
-// Node creation / patching
-// ============================================================
 
 function createNode(
   item: NItem,
@@ -515,21 +408,11 @@ function patchNode(
   }
 }
 
-// ============================================================
-// Raw HTML blocks
-// ============================================================
-
 function createRaw(item: NRaw): RRaw {
-  // Trusted-HTML path (`raw()`) — the documented dangerouslySetInnerHTML
-  // equivalent; never pass untrusted input.
   const tpl = document.createElement("template");
   tpl.innerHTML = item.html;
   return { k: RAW, html: item.html, doms: Array.from(tpl.content.childNodes) };
 }
-
-// ============================================================
-// Component instances
-// ============================================================
 
 function createComponent(
   item: NComponent,
@@ -538,8 +421,6 @@ function createComponent(
   ns: string | null,
 ): RComponent {
   const inst = createInstance(item.fn);
-  // Seed props before the first render (removal keys registered — all props
-  // come from parent renders in the FC model).
   writeInstanceProps(inst, item.props);
   const r: RComponent = {
     k: COMPONENT,
@@ -550,31 +431,20 @@ function createComponent(
     host: parentDom,
     ns,
   };
-  // Deferred: the parent's order pass must insert `end` into the host first.
   pass.ops.push({ t: 1, r });
   return r;
 }
 
-/**
- * Create the instance's render effect. Runs in the deferred-ops flush —
- * AFTER the parent's DOM commit, inside `untracked()` (the nested effect
- * establishes its own tracking scope, so child reads subscribe the child).
- */
 function mountComponent(r: RComponent): void {
   const inst = r.instance;
   registerInstance(inst);
   inst.renderDispose = effect(() => {
-    inst.invalidate.value; // manual/HMR re-render channel
+    inst.invalidate.value;
     if (inst.destroyed) return;
     renderComponent(r);
   });
 }
 
-/**
- * One component render pass: re-run the function (TRACKED — props/signal
- * reads subscribe THIS instance), diff the slice against the previous nodes,
- * then flush deferred ops and pending `useEffect`s inside `untracked()`.
- */
 function renderComponent(r: RComponent): void {
   const inst = r.instance;
   const pass: Pass = { ops: [] };
@@ -593,10 +463,6 @@ function renderComponent(r: RComponent): void {
     flushInstanceEffects(inst);
   });
 }
-
-// ============================================================
-// Elements
-// ============================================================
 
 function elementNamespace(
   type: string,
@@ -643,22 +509,14 @@ function createElement(
   return r;
 }
 
-/**
- * Valid attribute-name pattern (whitespace, quotes, `>`, `/`, `=`, `\`
- * rejected). Guards against attribute injection from dynamic prop spreads.
- */
 const ATTR_NAME_REGEXP = /^[^\s"'>/=\\]+$/;
 
-/** Event props are camelCase `on` + Capitalized type (`onClick` → `click`). */
 const EVENT_PROP_REGEXP = /^on[A-Z]/;
 
-/** Native inline-handler names (`onclick`) — rejected to avoid an XSS channel. */
 const NATIVE_EVENT_PROP_REGEXP = /^on[a-z]/;
 
-/** camelCase → kebab-case for style object keys. */
 const STYLE_KEY_REGEXP = /[A-Z]/g;
 
-/** Props handled outside the generic attribute snapshot. */
 const SKIP_PROPS = new Set([
   "children",
   "key",
@@ -668,14 +526,8 @@ const SKIP_PROPS = new Set([
   "ref",
 ]);
 
-/** Tags whose `value` is synced as a DOM property, not an attribute. */
 const FORM_VALUE_TAGS = new Set(["INPUT", "TEXTAREA", "SELECT"]);
 
-/**
- * Enumerated attributes whose booleans serialize as "true"/"false" strings —
- * removing them on `false` (or writing "" on `true`) would mean a DIFFERENT
- * state (`aria-hidden="false"` ≠ absent; `draggable=""` is invalid).
- */
 const ENUMERATED_BOOL_ATTRS = new Set([
   "contenteditable",
   "draggable",
@@ -690,7 +542,6 @@ function unwrap(value: unknown): unknown {
   return value instanceof Signal ? value.value : value;
 }
 
-/** Normalize a `class` / `className` value to a class string. */
 function classToString(value: unknown): string {
   if (value == null || value === false) return "";
   if (typeof value === "string") return value;
@@ -710,7 +561,6 @@ function classToString(value: unknown): string {
   return strSafe(value);
 }
 
-/** Normalize a `style` value to an inline style string. */
 function styleToString(value: unknown): string {
   if (value == null || value === false) return "";
   if (typeof value === "string") return value;
@@ -742,13 +592,6 @@ function isFormStateProp(el: Element, name: string): boolean {
   return false;
 }
 
-/**
- * Diff props against the resolved snapshot and apply changes.
- *
- * Snapshot entries are RESOLVED values: Signals unwrapped, `class`/`className`
- * merged under "class", `style` normalized to a string. Events and `ref` are
- * handled via identity outside the snapshot.
- */
 function patchElementProps(
   r: RElement,
   newProps: Record<string, unknown>,
@@ -774,7 +617,6 @@ function patchElementProps(
   for (const name of Object.keys(newProps)) {
     if (SKIP_PROPS.has(name)) continue;
 
-    // Events: on + Capitalized type (onClick → click)
     if (EVENT_PROP_REGEXP.test(name)) {
       const type = applyEvent(r, name, newProps[name]);
       if (type) {
@@ -786,8 +628,6 @@ function patchElementProps(
 
     const value = unwrap(newProps[name]);
 
-    // Native inline handlers (onclick="...") would execute attribute text as
-    // JavaScript — refuse handler-shaped values.
     if (
       NATIVE_EVENT_PROP_REGEXP.test(name) &&
       (typeof value === "string" || typeof value === "function")
@@ -800,23 +640,19 @@ function patchElementProps(
     }
 
     if (value == null || (value === false && !serializesBooleans(name)))
-      continue; // absent from snapshot → removal path
+      continue;
     next[name] = value;
   }
 
-  // Park bindings whose handler prop disappeared this render.
   if (r.events) {
     for (const type of Object.keys(r.events)) {
       if (!seenTypes?.has(type)) r.events[type].current = undefined;
     }
   }
 
-  // Removed attributes
   for (const name of Object.keys(prev)) {
     if (!(name in next)) applyAttr(r, name, undefined);
   }
-  // Added / changed attributes (form-state props re-sync unconditionally —
-  // the DOM value may have drifted via user input).
   for (const name of Object.keys(next)) {
     const value = next[name];
     if (value !== prev[name] || isFormStateProp(el, name))
@@ -826,7 +662,6 @@ function patchElementProps(
   r.attrs = next;
 }
 
-/** Wire (or swap) the per-node listener for an `onXxx` prop. Returns the type. */
 function applyEvent(
   r: RElement,
   name: string,
@@ -839,8 +674,6 @@ function applyEvent(
     );
     return undefined;
   }
-  // React-style capture props would register a bogus "…capture" event type.
-  // (gotpointercapture / lostpointercapture are real DOM events.)
   if (
     name.endsWith("Capture") &&
     name !== "onGotPointerCapture" &&
@@ -862,19 +695,16 @@ function applyEvent(
       proxy: (e: Event) => {
         const fn = b.current;
         if (!fn) return;
-        // batch(): multi-signal writes in one handler → one re-render.
         batch(() => fn(e));
       },
     };
     binding = events[type] = b;
     r.dom.addEventListener(type, b.proxy);
   }
-  // A removed handler parks the binding (listener stays, becomes a no-op).
   binding.current = value as AnyFunc | undefined;
   return type;
 }
 
-/** Apply one resolved attribute value (undefined → remove). */
 function applyAttr(r: RElement, name: string, value: unknown): void {
   const el = r.dom;
 
@@ -883,7 +713,6 @@ function applyAttr(r: RElement, name: string, value: unknown): void {
     return;
   }
 
-  // Form state → DOM properties (attributes don't track live state)
   if (isFormStateProp(el, name)) {
     if (name === "value") {
       const s = strSafe(value);
@@ -922,10 +751,6 @@ function applyAttr(r: RElement, name: string, value: unknown): void {
   el.setAttribute(name, strSafe(value));
 }
 
-// ============================================================
-// Post-commit flush: instance mounts / prop pushes / refs
-// ============================================================
-
 function callRef(ref: RefValue, el: Element | null): void {
   if (typeof ref === "function") {
     ref(el);
@@ -934,13 +759,6 @@ function callRef(ref: RefValue, el: Element | null): void {
   }
 }
 
-/**
- * Flush deferred ops after the DOM commit. Both call sites run it inside
- * `untracked()` so child renders and prop writes never subscribe the
- * parent's render effect. Prop writes are batched (inside
- * `writeInstanceProps`), so invalidated children render after the current
- * effect completes.
- */
 function flushOps(ops: PendingOp[]): void {
   for (const op of ops) {
     switch (op.t) {

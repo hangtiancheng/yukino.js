@@ -8,7 +8,6 @@ const ATTRIBUTE_ALIAS: Record<string, string> = {
   htmlFor: "for",
 };
 
-/** Props consumed by the reconciler itself — never written to the DOM */
 const RESERVED_PROPS = new Set([
   "children",
   "key",
@@ -16,7 +15,6 @@ const RESERVED_PROPS = new Set([
   "dangerouslySetInnerHTML",
 ]);
 
-/** CSS properties that take unitless numbers (preact's proven pattern) */
 const UNITLESS_STYLE_REGEXP =
   /acit|ex(?:s|g|n|p|$)|rph|grid|ows|mnc|ntw|ine[ch]|zoo|^ord|itera/i;
 
@@ -37,7 +35,6 @@ export function createDom(vNode: VNode, parentDom: Node): Node {
     return document.createTextNode(vNode.props.nodeValue);
   }
   const type = vNode.type as string;
-  // <svg> opens the namespace; descendants inherit it until <foreignObject> escapes back to HTML
   const dom =
     type === "svg" ||
     ((parentDom as Element).namespaceURI === SVG_NAMESPACE &&
@@ -48,7 +45,6 @@ export function createDom(vNode: VNode, parentDom: Node): Node {
   return dom;
 }
 
-/** Incrementally update props: remove stale ones first, then skip unchanged ones via Object.is */
 export function updateProps(
   dom: Element,
   oldProps: Props,
@@ -91,8 +87,6 @@ export function updateProps(
     setProp(dom, name, next);
   }
 
-  // Like React, dangerouslySetInnerHTML is the explicit trusted-HTML escape
-  // hatch: the value is parsed as markup, so callers must sanitize untrusted input.
   const nextHtml = newProps.dangerouslySetInnerHTML?.__html;
   const prevHtml = oldProps.dangerouslySetInnerHTML?.__html;
   if (nextHtml !== prevHtml) {
@@ -110,9 +104,6 @@ function setProp(dom: Element, name: string, value: unknown): void {
     }
     return;
   }
-  // Controlled properties like value / checked only reflect in the UI when
-  // written as properties. SVG elements are excluded: their reflected props
-  // (className, width, ...) are read-only SVGAnimated* objects.
   if (dom.namespaceURI !== SVG_NAMESPACE && name in dom) {
     Reflect.set(dom, name, value === null || value === undefined ? "" : value);
     return;
@@ -179,11 +170,6 @@ function applyStyle(
   }
 }
 
-/**
- * Attach `props.ref` to a freshly inserted host element. A function ref may
- * return a cleanup (React 19 semantics), stored on the instance; an object
- * ref gets `.current` assigned.
- */
 export function attachRef(vnode: VNode): void {
   const ref = vnode.props.ref;
   if (!ref) {
@@ -197,14 +183,6 @@ export function attachRef(vnode: VNode): void {
   ref.current = vnode.dom;
 }
 
-/**
- * Detach a ref (unmount, or the old ref when a patch swaps refs). Prefers the
- * stored cleanup; a cleanup-less function ref is called with null.
- *
- * @param ref The ref to detach — defaults to the instance's own; patch passes
- *            the OLD props' ref explicitly while `vnode` already carries the
- *            old cleanup via instantiate().
- */
 export function detachRef(vnode: VNode, ref: unknown = vnode.props.ref): void {
   if (!ref) {
     return;

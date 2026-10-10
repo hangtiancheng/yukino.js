@@ -1,4 +1,3 @@
-/** App boot story: render(<RouterView router={createRouter(routes)}/>, el). */
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { render, unmount } from "../src/jsx/reconcile";
 import { createRouter, RouterView, useRouter, useBlocker } from "../src/router";
@@ -105,7 +104,6 @@ describe("RouterView", () => {
       "<button>user 1 clicks 1</button>",
     );
 
-    // Param-only change: same component → same instance → clicks survive.
     await router.navigate("/users/2");
     expect(stripAnchors(host.innerHTML)).toBe(
       "<button>user 2 clicks 1</button>",
@@ -147,7 +145,7 @@ describe("RouterView", () => {
     ]);
     render(<RouterView router={router} />, host);
     await router.navigate("/slow");
-    await router.navigate("/"); // newer navigation wins
+    await router.navigate("/");
     release();
     await new Promise((r) => setTimeout(r, 10));
     expect(stripAnchors(host.innerHTML)).toBe("<p>home</p>");

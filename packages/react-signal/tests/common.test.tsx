@@ -54,10 +54,6 @@ describe("common", () => {
   });
 });
 
-// ============================================================
-// ARIA / enumerated boolean attributes
-// ============================================================
-
 describe("reconciler — ARIA/enumerated booleans serialize as strings", () => {
   it('serializes aria-* booleans as "true"/"false" instead of ""/removal', () => {
     render(<div aria-hidden={false} aria-expanded={true} />, host);
@@ -65,7 +61,6 @@ describe("reconciler — ARIA/enumerated booleans serialize as strings", () => {
     expect(div.getAttribute("aria-hidden")).toBe("false");
     expect(div.getAttribute("aria-expanded")).toBe("true");
 
-    // Removing the prop entirely removes the attribute.
     render(<div />, host);
     expect(host.querySelector("div")!.hasAttribute("aria-hidden")).toBe(false);
   });
@@ -84,10 +79,6 @@ describe("reconciler — ARIA/enumerated booleans serialize as strings", () => {
     expect(host.querySelector("button")!.getAttribute("disabled")).toBe("");
   });
 });
-
-// ============================================================
-// Capture-phase event props
-// ============================================================
 
 describe("reconciler — capture-phase props are rejected loudly", () => {
   it("warns and skips onClickCapture (would register a bogus event type)", () => {
@@ -117,10 +108,6 @@ describe("reconciler — capture-phase props are rejected loudly", () => {
   });
 });
 
-// ============================================================
-// Duplicate sibling keys
-// ============================================================
-
 describe("reconciler — duplicate keys warn", () => {
   it("dev-warns when two siblings share a key", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
@@ -130,10 +117,6 @@ describe("reconciler — duplicate keys warn", () => {
     );
   });
 });
-
-// ============================================================
-// Root recovery after a first-render throw
-// ============================================================
 
 describe("render — container stays retryable after a first-render throw", () => {
   it("re-render succeeds once the component stops throwing", () => {
@@ -148,10 +131,6 @@ describe("render — container stays retryable after a first-render throw", () =
     expect(host.querySelector("p")!.textContent).toBe("recovered");
   });
 });
-
-// ============================================================
-// Props proxy — key-set reactivity
-// ============================================================
 
 describe("props proxy — `in` / Object.keys are reactive to key changes", () => {
   it("re-renders a child that checks `in` when a prop key appears", () => {
@@ -196,10 +175,6 @@ describe("props proxy — `in` / Object.keys are reactive to key changes", () =>
   });
 });
 
-// ============================================================
-// Router — splat patterns
-// ============================================================
-
 describe("matchPath — splat must be the last segment", () => {
   it("rejects mid-pattern splats instead of silently ignoring the tail", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
@@ -213,10 +188,6 @@ describe("matchPath — splat must be the last segment", () => {
     expect(matchPath("/files/*", "/files/a/b")).toEqual({ "*": "a/b" });
   });
 });
-
-// ============================================================
-// HMR — alias ping-pong + trailing keep-slot disposal
-// ============================================================
 
 describe("HMR — edit-revert ping-pong stays consistent", () => {
   it("resolves every version to the latest after A→B→A", () => {
@@ -238,14 +209,12 @@ describe("HMR — edit-revert ping-pong stays consistent", () => {
 
     hotSwapByComponent(A, B);
     expect(host.querySelector("i")!.textContent).toBe("B5");
-    hotSwapByComponent(B, A); // revert
+    hotSwapByComponent(B, A);
     expect(host.querySelector("i")!.textContent).toBe("A5");
 
-    // Both stale references resolve to the SAME latest version (no cycle).
     expect(canonicalComponent(A)).toBe(A);
     expect(canonicalComponent(B)).toBe(A);
 
-    // A parent re-render must keep matching the live instance (state kept).
     const inst = Array.from(getInstances(A))[0]!;
     tick.value++;
     expect(host.querySelector("i")!.textContent).toBe("A5");
@@ -261,7 +230,7 @@ describe("HMR — swap to a version with fewer hooks drops trailing keep slots",
       return <i>{a.value + b.value}</i>;
     }
     function V2() {
-      const a = useSignal(9); // keep slot 0 survives with its old value (1)
+      const a = useSignal(9);
       return <b>{a.value}</b>;
     }
     function Parent() {
@@ -274,6 +243,6 @@ describe("HMR — swap to a version with fewer hooks drops trailing keep slots",
     expect(host.querySelector("b")!.textContent).toBe("1");
 
     const inst = Array.from(getInstances(V2))[0]!;
-    expect(inst.hooks.length).toBe(1); // trailing keep slot was disposed
+    expect(inst.hooks.length).toBe(1);
   });
 });

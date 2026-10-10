@@ -13,7 +13,6 @@ const external = [
 ];
 
 export default defineConfig([
-  // ESM output
   {
     input: "src/index.ts",
     output: {
@@ -34,7 +33,6 @@ export default defineConfig([
     ],
     external,
   },
-  // CJS output
   {
     input: "src/index.ts",
     output: {
@@ -56,7 +54,6 @@ export default defineConfig([
     ],
     external,
   },
-  // Type declarations
   {
     input: "src/index.ts",
     output: {

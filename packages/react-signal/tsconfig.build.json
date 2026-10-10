@@ -13,7 +13,6 @@
     "moduleDetection": "force",
     "moduleResolution": "bundler",
     "noFallthroughCasesInSwitch": true,
-    // "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
     "noImplicitReturns": false,
     "noPropertyAccessFromIndexSignature": false,
@@ -27,7 +26,6 @@
     "rootDir": "./src",
     "skipLibCheck": true,
     "sourceMap": false,
-    // Recommended Options
     "strict": true,
     "target": "esnext",
     "types": ["node"],

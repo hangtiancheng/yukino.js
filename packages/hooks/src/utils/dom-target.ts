@@ -7,9 +7,7 @@ type TargetValue<T> = T | undefined | null;
 type TargetType = HTMLElement | Element | Document | Window;
 
 export type BasicTarget<T extends TargetType = Element> =
-  | TargetValue<T>
-  | (() => TargetValue<T>) // Getter
-  | RefObject<TargetValue<T>>;
+  TargetValue<T> | (() => TargetValue<T>) | RefObject<TargetValue<T>>;
 
 export function getTargetElement<T extends TargetType>(
   target: BasicTarget<T>,
@@ -25,17 +23,10 @@ export function getTargetElement<T extends TargetType>(
 
   let targetElement: TargetValue<T>;
 
-  // RefCallback<TargetValue<T>>
-
-  // Getter
   if (isFunction(target)) {
     targetElement = target();
-
-    // RefObject<TargetValue<T>>
   } else if ("current" in target) {
     targetElement = target.current;
-
-    // TargetValue<T>
   } else {
     targetElement = target;
   }

@@ -128,9 +128,9 @@ describe("useUrlState (component hook)", () => {
   it("the setter is STABLE across re-renders", async () => {
     await router.navigate("/list?page=1");
     mountPager({ page: "1" });
-    await router.navigate("/list?page=2"); // triggers a re-render
+    await router.navigate("/list?page=2");
     expect(host.innerHTML).toContain('"page":"2"');
     expect(setterIdentities.length).toBeGreaterThan(1);
-    expect(new Set(setterIdentities).size).toBe(1); // one identity, every render
+    expect(new Set(setterIdentities).size).toBe(1);
   });
 });

@@ -1,10 +1,3 @@
-/**
- * Function-component runtime tests: hostless instances, per-render body
- * re-runs, hook slots (useSignal/useRef/useComputed/useEffect(mount-only)/
- * useSignalEffect/onCleanup), fine-grained props, callback props, children,
- * anchor-slice invariants, and teardown order.
- */
-
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, unmount } from "../src/jsx/reconcile";
 import { raw, type JSXNode } from "../src/jsx/vnode";
@@ -42,7 +35,6 @@ describe("component — hostless mounting", () => {
     }
     render(<Hello />, host);
     expect(stripAnchors(host.innerHTML)).toBe("<p>hello</p>");
-    // No wrapper div — the <p> is a DIRECT child of the container.
     expect(host.querySelector("p")!.parentElement).toBe(host);
   });
 
@@ -174,7 +166,7 @@ describe("component — state & re-render", () => {
     shared.value = "b";
     expect(host.querySelector("em")!.textContent).toBe("b");
     expect(childRenders).toBe(2);
-    expect(parentRenders).toBe(1); // parent untouched
+    expect(parentRenders).toBe(1);
   });
 });
 
@@ -194,11 +186,11 @@ describe("component — props", () => {
     expect(childRenders).toBe(1);
     expect(host.querySelector("span")!.textContent).toBe("first");
 
-    label.value = "second"; // parent re-renders, pushes changed prop
+    label.value = "second";
     expect(host.querySelector("span")!.textContent).toBe("second");
     expect(childRenders).toBe(2);
 
-    other.value = 2; // parent re-renders, but child never read `other`... it did (props destructure? no — reads props.label only)
+    other.value = 2;
     expect(childRenders).toBe(2);
   });
 
@@ -218,7 +210,7 @@ describe("component — props", () => {
     render(<App />, host);
     click(host.querySelector("button"));
     expect(host.querySelector("button")!.textContent).toBe("1");
-    step.value = 10; // prop update — same instance
+    step.value = 10;
     click(host.querySelector("button"));
     expect(host.querySelector("button")!.textContent).toBe("11");
   });
@@ -324,12 +316,12 @@ describe("component — keyed lists & ordering", () => {
     expect(li("a").textContent).toBe("a:2");
     expect(li("c").textContent).toBe("c:1");
 
-    order.value = ["c", "a", "b"]; // reorder — atomic range moves
+    order.value = ["c", "a", "b"];
     const ids = Array.from(host.querySelectorAll("li")).map((el) =>
       el.getAttribute("data-id"),
     );
     expect(ids).toEqual(["c", "a", "b"]);
-    expect(li("a").textContent).toBe("a:2"); // state survived the move
+    expect(li("a").textContent).toBe("a:2");
     expect(li("c").textContent).toBe("c:1");
   });
 
@@ -386,7 +378,7 @@ describe("hooks — useEffect (mount-only) semantics", () => {
     const cleanup = vi.fn();
     const tick = signal(0);
     function App() {
-      tick.value; // subscribe → re-render on bump
+      tick.value;
       useEffect(() => {
         run();
         return cleanup;
@@ -397,7 +389,7 @@ describe("hooks — useEffect (mount-only) semantics", () => {
     expect(run).toHaveBeenCalledTimes(1);
     tick.value++;
     tick.value++;
-    expect(run).toHaveBeenCalledTimes(1); // mount-only
+    expect(run).toHaveBeenCalledTimes(1);
     expect(cleanup).not.toHaveBeenCalled();
     unmount(host);
     expect(cleanup).toHaveBeenCalledTimes(1);
@@ -424,7 +416,7 @@ describe("hooks — useEffect (mount-only) semantics", () => {
     const calls: string[] = [];
     function App() {
       useSignalEffect(() => {
-        const v = dep.value; // tracked
+        const v = dep.value;
         calls.push(`run:${v}`);
         return () => calls.push(`clean:${v}`);
       });
@@ -432,7 +424,7 @@ describe("hooks — useEffect (mount-only) semantics", () => {
     }
     render(<App />, host);
     dep.value = "b";
-    dep.value = "b"; // same value — no notification
+    dep.value = "b";
     expect(calls).toEqual(["run:a", "clean:a", "run:b"]);
     unmount(host);
     expect(calls).toEqual(["run:a", "clean:a", "run:b", "clean:b"]);
@@ -467,9 +459,9 @@ describe("hooks — refs / memo / computed / cleanup", () => {
     render(<App />, host);
     expect(host.querySelector("p")!.textContent).toBe("via-ref");
     tick.value++;
-    expect(cells[0]).toBe(cells[1]); // same cell every render
+    expect(cells[0]).toBe(cells[1]);
     unmount(host);
-    expect(cells[0].current).toBeNull(); // nulled on teardown
+    expect(cells[0].current).toBeNull();
   });
 
   it("useComputed memoizes: unrelated re-renders do not recompute", () => {
@@ -483,7 +475,7 @@ describe("hooks — refs / memo / computed / cleanup", () => {
     }
     render(<App />, host);
     expect(compute).toHaveBeenCalledTimes(1);
-    tick.value++; // unrelated re-render — computed is cached
+    tick.value++;
     expect(compute).toHaveBeenCalledTimes(1);
     dep.value = 5;
     expect(compute).toHaveBeenCalledTimes(2);
@@ -515,12 +507,12 @@ describe("hooks — refs / memo / computed / cleanup", () => {
     }
     render(<App />, host);
     expect(seen).toEqual([0]);
-    tick.value++; // re-render must NOT recreate the effect
+    tick.value++;
     expect(seen).toEqual([0]);
     source.value = 1;
     expect(seen).toEqual([0, 1]);
     unmount(host);
-    source.value = 2; // disposed — no run
+    source.value = 2;
     expect(seen).toEqual([0, 1]);
   });
 

@@ -1,5 +1,3 @@
-// https://ahooks.js.org/hooks/use-url-state/
-
 import { useMemoizedFn, useUpdate } from "../index.js";
 import type { ParseOptions, StringifyOptions } from "query-string";
 import queryString from "query-string";
@@ -50,9 +48,7 @@ const useUrlState = <S extends UrlState = UrlState>(
   };
 
   const location = useLocation();
-  // react-router v5
   const history = useHistory();
-  // react-router latest
   const navigate = useNavigate();
 
   const update = useUpdate();
@@ -83,8 +79,6 @@ const useUrlState = <S extends UrlState = UrlState>(
       ? { ...newQuery }
       : { ...queryFromUrl, ...newQuery };
 
-    // update 和 history 的更新会被合并, 不会导致多次渲染
-    // React 自动批处理: 在同一个同步任务中调度的多个状态更新会被合并为一次渲染
     update();
     if (version === "v5") {
       history[navigateMode](

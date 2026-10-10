@@ -10,7 +10,6 @@ const DEFAULT_SVC_NAME = "yukino_cache";
 export interface PickerOption {
   serviceName?: string;
   etcdEndpoints?: string[];
-  /** Per-call deadline for peer RPCs in milliseconds. */
   peerDeadlineMs?: number;
 }
 
@@ -37,7 +36,6 @@ export class ClientPicker implements PeerPicker {
   }
 
   async start(): Promise<void> {
-    // self participates in the ring so key ownership is globally consistent
     this.consHash.add(this.selfAddr);
 
     const addrs = await this.discovery.fetchAll();

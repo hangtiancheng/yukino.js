@@ -1,19 +1,6 @@
 #!/usr/bin/env node
 
 // @ts-check
-/**
- * Local demo runner.
- *
- * Mirrors the previous bootstrap.sh:
- *   1. Make sure an etcd is reachable on 127.0.0.1:2379 (fork a local one via
- *      the brew-installed `etcd` binary when missing).
- *   2. Compile main.ts into ./.dist so we don't touch rollup's dist/.
- *   3. Launch three cache servers (:8001, :8002, :8003).
- *   4. Drive them with the gRPC Client built from the demo dist.
- *
- * Usage:
- *   node bootstrap.js
- */
 import { spawn } from "node:child_process";
 import { copyFileSync, createWriteStream, mkdirSync, rmSync } from "node:fs";
 import { createConnection } from "node:net";
@@ -21,37 +8,10 @@ import { dirname, join, resolve } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-/** @typedef {import("node:child_process").ChildProcess} ChildProcess */
-/** @typedef {import("node:child_process").SpawnOptions} SpawnOptions */
-
-/**
- * @typedef {Object} TestCase
- * @property {string} addr   Cache server gRPC endpoint.
- * @property {string} key    Key to seed and query under the demo group.
- * @property {string} value  Value to seed for the key.
- */
-
-/**
- * Minimal subset of the Client class used by this script.
- * @typedef {{
- *   new (addr: string): {
- *     get(group: string, key: string): Promise<Buffer>;
- *     set(group: string, key: string, value: Buffer): Promise<void>;
- *     close(): Promise<void>;
- *   };
- * }} ClientCtor
- */
-
 const __dirname = dirname(fileURLToPath(import.meta.url));
 process.chdir(__dirname);
 
-/* -------------------------------------------------------------------------- */
-/* Configuration                                                              */
-/* -------------------------------------------------------------------------- */
-
-/** Output dir for the compiled demo binary, kept separate from rollup's dist/. */
 const DEMO_DIST = ".dist";
-/** Data dir for the embedded etcd instance (deleted on exit). */
 const ETCD_DATA_DIR = ".etcd";
 const ETCD_LOG_PATH = join(ETCD_DATA_DIR, "etcd.log");
 const ETCD_HOST = "127.0.0.1";
@@ -60,35 +20,20 @@ const ETCD_START_TIMEOUT_MS = 30_000;
 const PORT_PROBE_INTERVAL_MS = 500;
 const SERVER_BOOT_DELAY_MS = 3_000;
 
-/** Cache servers spawned by this demo. */
-/** @type {readonly number[]} */
 const CACHE_PORTS = [8001, 8002, 8003];
 
-/** Group name seeded by main.ts. */
 const GRPC_GROUP = "user";
 
-/** Smoke tests fired against each cache server (set first, then get). */
-/** @type {readonly TestCase[]} */
 const TEST_CASES = [
   { addr: `127.0.0.1:${CACHE_PORTS[0]}`, key: "Alice", value: "1" },
   { addr: `127.0.0.1:${CACHE_PORTS[1]}`, key: "Bob", value: "2" },
   { addr: `127.0.0.1:${CACHE_PORTS[2]}`, key: "Yukino", value: "3" },
 ];
 
-/* -------------------------------------------------------------------------- */
-/* Process bookkeeping                                                        */
-/* -------------------------------------------------------------------------- */
-
-/** @type {ChildProcess | null} */
 let etcdProcess = null;
-/** @type {ChildProcess[]} */
 const serverProcesses = [];
 let cleanupDone = false;
 
-/**
- * Kill every forked process and remove the etcd data dir. Safe to call twice.
- * @returns {Promise<void>}
- */
 async function cleanup() {
   if (cleanupDone) return;
   cleanupDone = true;
@@ -104,24 +49,10 @@ async function cleanup() {
   rmSync(ETCD_DATA_DIR, { recursive: true, force: true });
 }
 
-/**
- * @param {ChildProcess} proc
- * @returns {boolean}
- */
 function isAlive(proc) {
   return proc.exitCode === null && proc.signalCode === null;
 }
 
-/* -------------------------------------------------------------------------- */
-/* TCP helpers                                                                */
-/* -------------------------------------------------------------------------- */
-
-/**
- * Try opening a TCP connection to host:port. Resolves with reachability.
- * @param {string} host
- * @param {number} port
- * @returns {Promise<boolean>}
- */
 function probePort(host, port) {
   return new Promise((resolveFn) => {
     const socket = createConnection({ host, port }, () => {
@@ -135,13 +66,6 @@ function probePort(host, port) {
   });
 }
 
-/**
- * Poll the endpoint at PORT_PROBE_INTERVAL_MS until reachable or timed out.
- * @param {string} host
- * @param {number} port
- * @param {number} timeoutMs
- * @returns {Promise<boolean>}
- */
 async function waitForPort(host, port, timeoutMs) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
@@ -151,17 +75,6 @@ async function waitForPort(host, port, timeoutMs) {
   return false;
 }
 
-/* -------------------------------------------------------------------------- */
-/* Subprocess helpers                                                         */
-/* -------------------------------------------------------------------------- */
-
-/**
- * Spawn a child and resolve when it exits with code 0; reject otherwise.
- * @param {string} cmd
- * @param {readonly string[]} args
- * @param {SpawnOptions} [options]
- * @returns {Promise<void>}
- */
 function runChild(cmd, args, options = {}) {
   return new Promise((resolveFn, reject) => {
     const child = spawn(cmd, [...args], options);
@@ -176,15 +89,6 @@ function runChild(cmd, args, options = {}) {
   });
 }
 
-/* -------------------------------------------------------------------------- */
-/* Stages                                                                     */
-/* -------------------------------------------------------------------------- */
-
-/**
- * Make sure 127.0.0.1:2379 is reachable. If not, fork a local etcd from PATH
- * (install with `brew install etcd`).
- * @returns {Promise<void>}
- */
 async function ensureEtcd() {
   if (await probePort(ETCD_HOST, ETCD_PORT)) {
     console.log(`>>> reusing existing etcd on ${ETCD_HOST}:${ETCD_PORT}`);
@@ -218,11 +122,6 @@ async function ensureEtcd() {
   }
 }
 
-/**
- * Compile main.ts (and its TS deps) into the sandbox dist folder, then copy
- * the .proto files alongside so the runtime loader resolves them.
- * @returns {Promise<void>}
- */
 async function compileDemo() {
   console.log(`>>> compiling demo entry into ${DEMO_DIST}`);
   rmSync(DEMO_DIST, { recursive: true, force: true });
@@ -240,11 +139,6 @@ async function compileDemo() {
   );
 }
 
-/**
- * Fork a cache server bound to the given port and track its handle.
- * @param {number} port
- * @returns {ChildProcess}
- */
 function startCacheServer(port) {
   const proc = spawn(
     "node",
@@ -260,15 +154,8 @@ function startCacheServer(port) {
   return proc;
 }
 
-/**
- * Drive every TEST_CASES entry in parallel: write the value first, then read
- * it back through the same client. Writing first avoids the cold-read path
- * that triggers cross-peer forwarding (and the 3s deadline).
- * @returns {Promise<void>}
- */
 async function runGrpcTests() {
   const clientUrl = pathToFileURL(resolve(DEMO_DIST, "client.js")).href;
-  /** @type {{ Client: ClientCtor }} */
   const mod = await import(clientUrl);
   const { Client } = mod;
   await Promise.all(
@@ -288,19 +175,7 @@ async function runGrpcTests() {
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/* Signal wiring & entry                                                      */
-/* -------------------------------------------------------------------------- */
-
-/**
- * Bind SIGINT / SIGTERM / uncaught error handlers to cleanup.
- * @returns {void}
- */
 function registerSignalHandlers() {
-  /**
-   * @param {NodeJS.Signals | "uncaughtException"} reason
-   * @returns {Promise<void>}
-   */
   const finalize = async (reason) => {
     try {
       await cleanup();
@@ -324,10 +199,6 @@ function registerSignalHandlers() {
   });
 }
 
-/**
- * Entry point: setup, smoke-test, then block until the user interrupts.
- * @returns {Promise<void>}
- */
 async function main() {
   registerSignalHandlers();
   await ensureEtcd();

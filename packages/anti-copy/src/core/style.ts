@@ -3,7 +3,6 @@ import { eventElement, isEditable, isExcluded } from "./utils";
 
 const STYLE_ATTR = "yukino-anti-copy";
 
-/** Always keep editable controls selectable regardless of configuration. */
 const EDITABLE_SELECTORS = [
   "input",
   "textarea",
@@ -12,11 +11,6 @@ const EDITABLE_SELECTORS = [
   "[contenteditable='plaintext-only' i]",
 ];
 
-/**
- * Drops selectors the document cannot parse. One invalid selector in a
- * grouped rule would invalidate the entire rule per the CSS spec, silently
- * killing the editable-control exemptions along with it.
- */
 function validSelectors(doc: Document, selectors: string[]): string[] {
   return selectors.filter((selector) => {
     try {
@@ -33,24 +27,13 @@ function buildCss(doc: Document, excludeSelectors: string[]): string {
     ...EDITABLE_SELECTORS,
     ...excludeSelectors,
   ]);
-  // Re-enable selection inside excluded regions and their descendants:
-  // `user-select` does not inherit past an explicit `none`, so descendants
-  // must be targeted explicitly. `!important` resists page-level overrides.
-  // `:is()` keeps selector-list entries (e.g. ".a, .b") grouped correctly.
   const allowRules = allowed.map((s) => `:is(${s}), :is(${s}) *`).join(",\n");
   return [
-    // -webkit-touch-callout suppresses the iOS long-press menu, which never
-    // fires a contextmenu event and would bypass protection entirely.
     "body { -webkit-user-select: none !important; user-select: none !important; -webkit-touch-callout: none; }",
     `${allowRules} { -webkit-user-select: text !important; user-select: text !important; }`,
   ].join("\n");
 }
 
-/**
- * Injects (and removes) a stylesheet that disables text selection globally,
- * plus a `selectstart` interceptor as a backup for style overrides. Skipped
- * in `"replace"` mode where selection must stay possible.
- */
 export function createStyleFeature(options: ResolvedOptions): Feature {
   const doc = options.target;
   const listenTarget: EventTarget = doc.defaultView ?? doc;

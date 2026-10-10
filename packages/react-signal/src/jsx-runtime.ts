@@ -1,23 +1,3 @@
-/**
- * JSX automatic runtime for `@yukino.js/react-signal`.
- *
- * Configure TypeScript / your bundler with:
- *
- * ```jsonc
- * // tsconfig.json
- * { "compilerOptions": { "jsx": "react-jsx", "jsxImportSource": "@yukino.js/react-signal" } }
- * ```
- *
- * `<div/>` then compiles to `jsx("div", {})` importing from
- * `@yukino.js/react-signal/jsx-runtime`. The produced `VNode` tree is PURE DATA — at
- * render time it is reconciled directly into the live DOM by the framework's
- * VNode reconciler (`@yukino.js/react-signal` main entry): keyed diff, per-node event
- * listeners, and hostless component instances for function tags.
- *
- * This entry is intentionally tiny and framework-free — safe to import from
- * any module without pulling the framework in.
- */
-
 import type { JSXInternal } from "./jsx/dom-types";
 import {
   createVNode,
@@ -31,18 +11,8 @@ import {
 export { Fragment, raw };
 export type { Component, JSXNode, VNode };
 
-// Typed DOM attribute layer (per-tag props, native-event handler types,
-// aria/svg/mathml) — sourced from the preact package and adapted to Yukino
-// semantics.
 export type * from "./jsx/dom-types";
 
-/**
- * Create a JSX element (automatic runtime entry, static children).
- *
- * `key` arrives as the third argument (NOT inside props) per the React 17+
- * automatic-runtime convention. It is the sibling compare key for the
- * reconciler's keyed diff (never written to the DOM).
- */
 export function jsx(
   type: string | Component | symbol,
   props: Record<string, unknown> | null | undefined,
@@ -51,59 +21,21 @@ export function jsx(
   return createVNode(type, props, key);
 }
 
-/**
- * Create a JSX element with multiple static children — identical to `jsx`
- * for this runtime (children are serialized uniformly).
- */
 export const jsxs = jsx;
 
-// ============================================================
-// JSX type namespace (resolved by TypeScript via jsxImportSource)
-// ============================================================
-
-// The `declare` modifier keeps the namespace fully type-only (erasable) so it
-// compiles identically under both tsconfig.json (verbatimModuleSyntax: true)
-// and tsconfig.build.json (verbatimModuleSyntax: false).
 export declare namespace JSX {
-  /** The type of a rendered JSX expression. */
   type Element = VNode;
-  /** Valid element types: tag names, functional components, Fragment. */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   type ElementType = string | Component<any> | symbol;
   interface ElementChildrenAttribute {
-    // Marker interface consumed by TypeScript — the property TYPE is unused.
     // eslint-disable-next-line @typescript-eslint/no-empty-object-type
     children: {};
   }
   interface IntrinsicAttributes {
     key?: string | number;
   }
-  /**
-   * Per-tag typed intrinsic elements (HTML + SVG + MathML, sourced from the
-   * preact package) — strict: unknown tags are compile errors. The base is
-   * referenced through the QUALIFIED name `JSXInternal.IntrinsicElements`
-   * (dts-flattening safe — see ./jsx/dom-types.ts). Per-tag props are
-   * reachable as `JSX.IntrinsicElements["input"]`. Register custom elements
-   * via module augmentation (declaration merging):
-   *
-   * ```ts
-   * import type { HTMLAttributes } from "@yukino.js/react-signal";
-   *
-   * declare module "@yukino.js/react-signal/jsx-runtime" {
-   *   namespace JSX {
-   *     interface IntrinsicElements {
-   *       "my-widget": HTMLAttributes<HTMLElement> & { variant?: string };
-   *     }
-   *   }
-   * }
-   * ```
-   */
-  interface IntrinsicElements extends JSXInternal.IntrinsicElements {
-    /** noop */
-  }
+  interface IntrinsicElements extends JSXInternal.IntrinsicElements {}
 
-  // Preact-parity mirrors — `JSX.HTMLAttributes<T>`, `JSX.TargetedEvent`,
-  // per-tag attribute interfaces, aria/svg/mathml types, event handlers.
   export type Signalish<T> = JSXInternal.Signalish<T>;
   export type ClassValue = JSXInternal.ClassValue;
   export type RefCallback<T> = JSXInternal.RefCallback<T>;

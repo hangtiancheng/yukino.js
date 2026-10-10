@@ -203,7 +203,6 @@ describe("runaway update guard", () => {
       }
       expect(String(caught)).toContain("Maximum update depth exceeded");
       expect(waves).toBeLessThan(100);
-      // The loop is broken: nothing further is scheduled
       expect(tasks.length).toBe(0);
     } finally {
       spy.mockRestore();

@@ -79,8 +79,6 @@ describe("lifecycle", () => {
   });
 
   it("rolls back partially-attached features when enable fails", () => {
-    // A document whose event registration always fails: the style feature
-    // appends its stylesheet, then throws on the selectstart listener.
     const fakeDoc = {
       defaultView: null,
       head: document.head,
@@ -89,9 +87,7 @@ describe("lifecycle", () => {
       addEventListener: () => {
         throw new Error("attach failed");
       },
-      removeEventListener: () => {
-        /** noop */
-      },
+      removeEventListener: () => {},
     } as unknown as Document;
 
     const instance = createAntiCopy({
@@ -103,7 +99,6 @@ describe("lifecycle", () => {
     });
     expect(() => instance.enable()).toThrow("attach failed");
     expect(instance.isEnabled()).toBe(false);
-    // The half-attached stylesheet must have been rolled back.
     expect(document.head.querySelector("style[yukino-anti-copy]")).toBeNull();
     instance.destroy();
   });

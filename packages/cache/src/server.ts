@@ -12,10 +12,6 @@ export interface ServerOptions {
   tls?: boolean;
   certFile?: string;
   keyFile?: string;
-  /**
-   * Address published to the registry for peers to dial. Defaults to the
-   * bind address; set this when binding to 0.0.0.0 or a wildcard address.
-   */
   advertiseAddr?: string;
 }
 
@@ -75,14 +71,14 @@ export class Server {
     });
 
     const servingStatuses = new Map<string, number>();
-    servingStatuses.set(svcName, 1); // SERVING
+    servingStatuses.set(svcName, 1);
     this.grpcServer.addService(healthProto.grpc.health.v1.Health.service, {
       Check: (
         call: grpc.ServerUnaryCall<any, any>,
         callback: grpc.sendUnaryData<any>,
       ) => {
         const service = call.request.service || "";
-        const status = servingStatuses.get(service) ?? 0; // UNKNOWN
+        const status = servingStatuses.get(service) ?? 0;
         callback(null, { status });
       },
     });

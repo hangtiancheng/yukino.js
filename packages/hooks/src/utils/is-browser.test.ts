@@ -1,7 +1,3 @@
-// @vitest-environment jsdom
-
-// 魔法注释, 指定 jsdom 环境
-// pnpm test utils/is-browser.test.ts
 import { describe, expect, it } from "vitest";
 
 import isBrowser from "./is-browser.js";
@@ -20,7 +16,6 @@ describe("window globals in jsdom environment", () => {
   it("window.document.createElement should be a function", () => {
     expect(window.document.createElement).toBeDefined();
     expect(typeof window.document.createElement).toBe("function");
-    // Verify actual invocation
     const div = window.document.createElement("div");
     expect(div.tagName).toBe("DIV");
   });
@@ -29,7 +24,6 @@ describe("window globals in jsdom environment", () => {
     expect(window.navigator).toBeDefined();
     expect(typeof window.navigator).toBe("object");
     expect(window.navigator.userAgent).toBeDefined();
-    // jsdom userAgent includes 'jsdom' identifier
     expect(window.navigator.userAgent).toContain("jsdom");
   });
 

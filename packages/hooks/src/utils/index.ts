@@ -26,9 +26,6 @@ export const isNonNullable = <T>(val: T): val is NonNullable<T> => {
   return val !== null && val !== undefined;
 };
 
-// 访问 3.then
-// 3 自动装箱为 Number 对象
-// Number(3).then === undefined
 export const isThenable = <T>(val: any): val is PromiseLike<T> => {
   return isNonNullable(val) && isFunction(val.then);
 };

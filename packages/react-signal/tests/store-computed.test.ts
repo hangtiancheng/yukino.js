@@ -13,7 +13,6 @@ interface CountState {
 function makeCountStore(): StoreApi<CountState> {
   return createStore<CountState>((set, get) => ({
     count: 1,
-    // Dependencies are tracked automatically — get().count is a signal read.
     doubled: computed(() => get().count * 2),
     countPlusTen: computed(() => get().count + 10),
     increment() {
@@ -99,7 +98,7 @@ describe("createStore - computed", () => {
     expect(store.getState().derived).toBe(10);
     const before = computes;
 
-    store.setState({ b: 200 }); // `derived` never reads b
+    store.setState({ b: 200 });
     expect(store.getState().derived).toBe(10);
     expect(computes).toBe(before);
 

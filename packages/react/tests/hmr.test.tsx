@@ -25,12 +25,10 @@ describe("hotSwapByComponent", () => {
     await flush();
     expect(container.textContent).toBe("v1:1");
 
-    // root.element still references CounterV1 — the stale-descriptor case
     expect(hotSwapByComponent(CounterV1, CounterV2)).toBe(true);
     await flush();
     expect(container.textContent).toBe("v2:1");
 
-    // the swapped instance stays interactive
     click(container.querySelector("button")!);
     await flush();
     expect(container.textContent).toBe("v2:2");
@@ -48,7 +46,6 @@ describe("hotSwapByComponent", () => {
     }
     function Parent() {
       const [label, setLabel] = useState("p0");
-      // stale-descriptor case: the cached element captures ChildV1 forever
       const cached = useMemo(() => <ChildV1 />, []);
       return (
         <div>
@@ -114,7 +111,6 @@ describe("hotSwapByComponent", () => {
 
     hotSwapByComponent(V1, V2);
     await flush();
-    // slot 0 flipped state→memo (reset); slot 1 is a brand-new state slot
     expect(container.textContent).toBe("memo:0");
   });
 

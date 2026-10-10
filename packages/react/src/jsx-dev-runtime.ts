@@ -4,7 +4,6 @@ import { jsx } from "./jsx-runtime";
 export * from "./jsx-runtime";
 export type { JSX } from "./jsx-runtime";
 
-/** Dev transform entry — source metadata is accepted and ignored (no dev overlay) */
 export function jsxDEV(
   type: VNodeType,
   props: Props | null,

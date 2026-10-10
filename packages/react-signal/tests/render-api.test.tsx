@@ -1,8 +1,3 @@
-/**
- * `render(vnode, container)` / `unmount(container)` root API tests
- * (React-DOM style semantics).
- */
-
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, unmount } from "../src/jsx/reconcile";
 import { signal } from "../src/reactive";
@@ -51,9 +46,9 @@ describe("render()", () => {
     btn.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     expect(btn.textContent).toBe("v1:1");
 
-    render(<Counter label="v2" />, host); // Storybook pushArgs pattern
+    render(<Counter label="v2" />, host);
     expect(host.querySelector("button")).toBe(btn);
-    expect(btn.textContent).toBe("v2:1"); // state survived, prop updated
+    expect(btn.textContent).toBe("v2:1");
   });
 
   it("re-render with a different component unmounts the old one", () => {
@@ -112,7 +107,7 @@ describe("unmount()", () => {
     const msg = signal("a");
     render(<p>{msg}</p>, host);
     unmount(host);
-    msg.value = "b"; // must not throw / touch the DOM
+    msg.value = "b";
     expect(host.innerHTML).toBe("");
   });
 
@@ -127,7 +122,7 @@ describe("unmount()", () => {
       .dispatchEvent(new MouseEvent("click", { bubbles: true }));
     expect(host.querySelector("button")!.textContent).toBe("1");
     unmount(host);
-    render(<Counter />, host); // remount — state resets
+    render(<Counter />, host);
     expect(host.querySelector("button")!.textContent).toBe("0");
   });
 });

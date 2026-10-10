@@ -2,13 +2,6 @@ import { toChildArray } from "./element";
 import type { Children, ComponentType, VNode } from "./element";
 import { canonical, hmrActive } from "./hmr";
 
-/**
- * A mount point. setState performs no partial update; instead it marks the
- * owning root dirty and re-renders the whole tree — render (re-running the
- * component to get a new VNode tree) and reconcile (the keyed diff) converge the
- * actual DOM operations onto the changed nodes. That is exactly React's core
- * layering; all we omit is component-level pruning and interruptible scheduling.
- */
 export interface Root {
   container: Node;
   element: Children;
@@ -24,9 +17,7 @@ export type DepList = readonly unknown[];
 interface StateHook {
   tag: "state";
   state: any;
-  /** Pending update queue; shared across renders, so late-arriving setStates are never lost */
   queue: SetStateAction<any>[];
-  /** Identity-stable; safe to put into deps or event closures */
   setState: Dispatch<SetStateAction<any>>;
 }
 
@@ -35,7 +26,6 @@ interface EffectHook {
   create: EffectCallback;
   deps: DepList | null;
   cleanup: (() => void) | null;
-  /** Whether deps changed this render; consumed and reset by flushEffects after commit */
   changed: boolean;
 }
 
@@ -47,9 +37,7 @@ interface MemoHook {
 
 export type Hook = StateHook | EffectHook | MemoHook;
 
-/** The root currently rendering; setState uses it to find the tree to mark dirty */
 let activeRoot: Root | null = null;
-/** The hook array and cursor of the component currently rendering; hooks line up by call order (Rules of Hooks) */
 let currentHooks: Hook[] | null = null;
 let hookIndex = 0;
 
@@ -57,15 +45,6 @@ export function setActiveRoot(root: Root | null): void {
   activeRoot = root;
 }
 
-/**
- * Run a function component. Component rendering is serial (parent runs first,
- * children are diffed next), so no stack is needed.
- *
- * Under HMR the CANONICAL (latest) function runs against the instance's
- * existing hooks array — that is what preserves state across hot swaps. Slots
- * the edited body no longer reaches are cleaned up and dropped, so a shrunk
- * hook list cannot leak effects or misalign later renders.
- */
 export function renderComponent(vnode: VNode): VNode[] {
   const hooks = vnode.hooks!;
   currentHooks = hooks;
@@ -87,12 +66,6 @@ export function renderComponent(vnode: VNode): VNode[] {
   return toChildArray(rendered);
 }
 
-/**
- * Returns [slot, isFresh]. The slot object is reused across renders — that is
- * where state lives. A tag mismatch (an HMR edit changed the hook order)
- * destructively resets the slot: the stale effect cleanup runs, then a fresh
- * slot takes its place.
- */
 function getSlot<H extends Hook>(tag: H["tag"], create: () => H): [H, boolean] {
   if (currentHooks === null) {
     throw new Error("Hooks can only be called inside a function component.");
@@ -128,7 +101,6 @@ export function useState<S>(
           : initialState,
       queue: [],
       setState: (action) => {
-        // When the queue is empty, compute eagerly first; if the value is unchanged, skip entirely (React's eager bailout)
         if (created.queue.length === 0) {
           const eager =
             typeof action === "function"
@@ -199,12 +171,6 @@ function depsEqual(prev: DepList | null, next: DepList | null): boolean {
   return prev.every((dep, index) => Object.is(dep, next[index]));
 }
 
-/**
- * Run effects in a single pass after commit: first run every cleanup that needs
- * to run across the whole tree, then run create, so one component's cleanup never
- * reads state already mutated by another's create. Both passes run children
- * before parents (consistent with React).
- */
 export function flushEffects(children: VNode[]): void {
   walk(children, (vnode) => {
     for (const slot of vnode.hooks ?? []) {
@@ -225,7 +191,6 @@ export function flushEffects(children: VNode[]): void {
   });
 }
 
-/** Run one instance's effect cleanups; the unmount teardown walk (diff.ts) drives this */
 export function runEffectCleanups(vnode: VNode): void {
   for (const slot of vnode.hooks ?? []) {
     if (slot.tag === "effect" && slot.cleanup) {

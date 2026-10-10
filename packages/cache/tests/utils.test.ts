@@ -27,8 +27,6 @@ describe("getLocalIP", () => {
       const ip = getLocalIP();
       expect(typeof ip).toBe("string");
       expect(ip.split(".").length).toBe(4);
-    } catch {
-      // CI environments may not have a non-internal IPv4 interface
-    }
+    } catch {}
   });
 });

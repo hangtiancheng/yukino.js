@@ -35,7 +35,6 @@ describe("isExcluded", () => {
   it("tolerates invalid selectors", () => {
     expect(() => isExcluded(document.body, ["::bad::"])).not.toThrow();
     expect(isExcluded(document.body, ["::bad::"])).toBe(false);
-    // A valid selector after an invalid one must still match.
     document.body.innerHTML = '<div class="skip" id="s">x</div>';
     expect(isExcluded(document.getElementById("s"), ["::bad::", ".skip"])).toBe(
       true,
@@ -94,7 +93,6 @@ describe("isEditable", () => {
     expect(isEditable(document.getElementById("cb"))).toBe(false);
     expect(isEditable(document.getElementById("b"))).toBe(false);
     expect(isEditable(document.getElementById("se"))).toBe(true);
-    // Unknown types normalize to "text", the safe editable direction.
     expect(isEditable(document.getElementById("bo"))).toBe(true);
   });
 
@@ -121,7 +119,6 @@ describe("isSelectionExcluded", () => {
 
   it("returns null without selectors or without a usable selection", () => {
     expect(isSelectionExcluded(document, [])).toBe(null);
-    // Collapsed selection: no payload to judge, caller falls back to target.
     const collapsed = {
       defaultView: {
         getSelection: () =>
@@ -134,7 +131,6 @@ describe("isSelectionExcluded", () => {
       },
     } as Document;
     expect(isSelectionExcluded(collapsed, [".skip"])).toBe(null);
-    // Zero ranges.
     const empty = {
       defaultView: {
         getSelection: () =>

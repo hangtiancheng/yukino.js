@@ -1,8 +1,3 @@
-/**
- * VNode reconciler unit tests — element/text/attr/event/keyed/raw/namespace
- * mechanics through the public `render()` root API.
- */
-
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, unmount } from "../src/jsx/reconcile";
 import { raw } from "../src/jsx/vnode";
@@ -25,7 +20,6 @@ describe("reconcile — text & children", () => {
   it("renders text children as real text nodes (no HTML escaping needed)", () => {
     render(<p>{'a<b & c "quoted"'}</p>, host);
     expect(host.querySelector("p")!.textContent).toBe('a<b & c "quoted"');
-    // The dangerous characters are text data, not markup.
     expect(host.querySelectorAll("*")).toHaveLength(1);
   });
 
@@ -62,9 +56,9 @@ describe("reconcile — text & children", () => {
     render(<Badge label="new" />, host);
     const em = host.querySelector("em.badge")!;
     expect(em.textContent).toBe("new");
-    expect(em.parentElement).toBe(host); // hostless — direct child
+    expect(em.parentElement).toBe(host);
 
-    render(<Badge label="updated" />, host); // prop push, same instance
+    render(<Badge label="updated" />, host);
     expect(host.querySelector("em.badge")).toBe(em);
     expect(em.textContent).toBe("updated");
   });
@@ -95,7 +89,7 @@ describe("reconcile — attributes", () => {
     expect(el.getAttribute("data-b")).toBe("x");
 
     render(<div data-a="2" />, host);
-    expect(host.firstElementChild).toBe(el); // patched in place
+    expect(host.firstElementChild).toBe(el);
     expect(el.getAttribute("data-a")).toBe("2");
     expect(el.hasAttribute("data-b")).toBe(false);
   });
@@ -135,7 +129,7 @@ describe("reconcile — attributes", () => {
     const title = signal("hello");
     render(<p title={title} />, host);
     expect(host.querySelector("p")!.getAttribute("title")).toBe("hello");
-    title.value = "world"; // no render() call — the root effect re-runs
+    title.value = "world";
     expect(host.querySelector("p")!.getAttribute("title")).toBe("world");
   });
 
@@ -175,7 +169,7 @@ describe("reconcile — attributes", () => {
     const input = host.querySelector("input")!;
     expect(input.value).toBe("a");
     input.value = "user-typed";
-    render(<input value="a" />, host); // template value wins
+    render(<input value="a" />, host);
     expect(input.value).toBe("a");
   });
 });
@@ -201,7 +195,7 @@ describe("reconcile — events", () => {
     const addSpy = vi.spyOn(btn, "addEventListener");
     render(<button onClick={() => 2}>x</button>, host);
     render(<button onClick={() => 3}>x</button>, host);
-    expect(addSpy).not.toHaveBeenCalled(); // binding reused, only .current swapped
+    expect(addSpy).not.toHaveBeenCalled();
     addSpy.mockRestore();
   });
 
@@ -360,7 +354,7 @@ describe("reconcile — refs", () => {
     render(<div>{[<p key="p" ref={(el) => calls.push(el)} />]}</div>, host);
     expect(calls).toHaveLength(1);
     expect((calls[0] as Element).tagName).toBe("P");
-    expect(calls[0]!.isConnected).toBe(true); // ref fires post-insert
+    expect(calls[0]!.isConnected).toBe(true);
 
     render(<div>{[]}</div>, host);
     expect(calls).toHaveLength(2);

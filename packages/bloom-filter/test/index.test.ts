@@ -1,10 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { BloomFilter } from "../src/index.js";
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 function bulkAdd(filter: BloomFilter, count: number, prefix: string): void {
   for (let i = 0; i < count; i++) {
     filter.add(`${prefix}_${i}`);
@@ -23,15 +19,7 @@ function countFalsePositives(
   return fp;
 }
 
-// ---------------------------------------------------------------------------
-// Suite
-// ---------------------------------------------------------------------------
-
 describe("BloomFilter", () => {
-  // -----------------------------------------------------------------------
-  // Construction & validation
-  // -----------------------------------------------------------------------
-
   describe("constructor", () => {
     it("should compute valid m and k for typical parameters", () => {
       const bf = new BloomFilter(1000, 0.01);
@@ -77,14 +65,9 @@ describe("BloomFilter", () => {
     });
 
     it("should throw when computed m exceeds 2^32", () => {
-      // n=1e9, p=1e-15 produces an extremely large m
       expect(() => new BloomFilter(1_000_000_000, 1e-15)).toThrow(RangeError);
     });
   });
-
-  // -----------------------------------------------------------------------
-  // Core: add / has
-  // -----------------------------------------------------------------------
 
   describe("add & has", () => {
     it("should return true for all inserted items (zero false negatives)", () => {
@@ -142,10 +125,6 @@ describe("BloomFilter", () => {
     });
   });
 
-  // -----------------------------------------------------------------------
-  // addAll
-  // -----------------------------------------------------------------------
-
   describe("addAll", () => {
     it("should add items from an iterable", () => {
       const bf = new BloomFilter(100, 0.01);
@@ -169,10 +148,6 @@ describe("BloomFilter", () => {
       expect(bf.has("gen_b")).toBe(true);
     });
   });
-
-  // -----------------------------------------------------------------------
-  // clear
-  // -----------------------------------------------------------------------
 
   describe("clear", () => {
     it("should reset the filter so all has() return false", () => {
@@ -201,10 +176,6 @@ describe("BloomFilter", () => {
       expect(bf.size).toBe(1);
     });
   });
-
-  // -----------------------------------------------------------------------
-  // Set operations
-  // -----------------------------------------------------------------------
 
   describe("union", () => {
     it("should produce a filter containing items from both operands", () => {
@@ -252,10 +223,6 @@ describe("BloomFilter", () => {
     });
   });
 
-  // -----------------------------------------------------------------------
-  // Diagnostics
-  // -----------------------------------------------------------------------
-
   describe("diagnostics", () => {
     it("size should count add() calls (including duplicates)", () => {
       const bf = new BloomFilter(100, 0.01);
@@ -285,7 +252,6 @@ describe("BloomFilter", () => {
       bulkAdd(bf, 500, "est");
 
       const estimate = bf.estimatedItemCount;
-      // Allow 20% tolerance for probabilistic estimation
       expect(estimate).toBeGreaterThan(400);
       expect(estimate).toBeLessThan(600);
     });
@@ -306,10 +272,6 @@ describe("BloomFilter", () => {
       expect(cfg.k).toBe(bf.k);
     });
   });
-
-  // -----------------------------------------------------------------------
-  // Serialization
-  // -----------------------------------------------------------------------
 
   describe("serialize / deserialize", () => {
     it("should round-trip without data loss", () => {
@@ -359,10 +321,6 @@ describe("BloomFilter", () => {
     });
   });
 
-  // -----------------------------------------------------------------------
-  // Determinism & seed
-  // -----------------------------------------------------------------------
-
   describe("determinism", () => {
     it("same seed should produce identical bit arrays", () => {
       const a = new BloomFilter(100, 0.01, 99);
@@ -388,10 +346,6 @@ describe("BloomFilter", () => {
     });
   });
 
-  // -----------------------------------------------------------------------
-  // False-positive rate
-  // -----------------------------------------------------------------------
-
   describe("false-positive rate", () => {
     it.each([
       [1_000, 0.01],
@@ -403,12 +357,10 @@ describe("BloomFilter", () => {
         const bf = new BloomFilter(n, targetP);
         bulkAdd(bf, n, "in");
 
-        // Zero false negatives
         for (let i = 0; i < n; i++) {
           expect(bf.has(`in_${i}`)).toBe(true);
         }
 
-        // Measure false-positive rate on a disjoint set
         const probeCount = 50_000;
         const fp = countFalsePositives(bf, probeCount, "out");
         const actualRate = fp / probeCount;
@@ -418,17 +370,12 @@ describe("BloomFilter", () => {
     );
   });
 
-  // -----------------------------------------------------------------------
-  // Large-scale smoke test
-  // -----------------------------------------------------------------------
-
   describe("large scale", () => {
     it("should handle 100k items without degradation", () => {
       const n = 100_000;
       const bf = new BloomFilter(n, 0.01);
       bulkAdd(bf, n, "lg");
 
-      // Spot-check: no false negatives (sampled every 1000th)
       for (let i = 0; i < n; i += 1_000) {
         expect(bf.has(`lg_${i}`)).toBe(true);
       }

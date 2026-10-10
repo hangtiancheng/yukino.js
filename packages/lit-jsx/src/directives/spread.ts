@@ -15,9 +15,6 @@ class SpreadDirective extends AsyncDirective {
     return nothing;
   }
 
-  // Each update, apply the props and remove/clean up stale ones.
-  // This directive only ever sits in an attribute position, so the part is
-  // always an AttributePart.
   update(part: AttributePart, [spreadData]: Parameters<this["render"]>) {
     if (this.element !== part.element) {
       this.element = part.element;
@@ -28,7 +25,6 @@ class SpreadDirective extends AsyncDirective {
     this.prevData = spreadData;
   }
 
-  // Apply props.
   apply(data: { [key: string]: unknown }) {
     if (!data) return;
     const { prevData, element } = this;
@@ -53,24 +49,23 @@ class SpreadDirective extends AsyncDirective {
           );
           break;
         }
-        case ".": // property
+        case ".":
           (element as unknown as Record<string, unknown>)[name] = value;
           break;
-        case "?": // boolean attribute
+        case "?":
           if (value) {
             element.setAttribute(name, "");
           } else {
             element.removeAttribute(name);
           }
           break;
-        default: // standard attribute
+        default:
           element.setAttribute(key, String(value));
           break;
       }
     }
   }
 
-  // Clean up any removed props.
   groom(data: { [key: string]: unknown }) {
     const { prevData, element } = this;
     if (!prevData) return;
@@ -88,21 +83,12 @@ class SpreadDirective extends AsyncDirective {
           );
           break;
         case ".": {
-          // Reset removed property props; lit-html reuses the DOM node when
-          // two renders share a template, so stale values would otherwise
-          // leak onto the element that takes the node's place.
           const name = key.slice(1);
           if (Object.prototype.hasOwnProperty.call(element, name)) {
-            // Expando property set by a previous apply — remove it entirely.
             delete (element as unknown as Record<string, unknown>)[name];
           } else if (name === "className") {
-            // className reflects the class attribute; removing the attribute
-            // resets the property to "" without leaving class="" behind.
             element.removeAttribute("class");
           } else {
-            // Prototype accessor (IDL attribute or reactive property).
-            // DOMString IDL attributes coerce `undefined` to the literal
-            // string "undefined", so clear string-valued ones to "".
             const record = element as unknown as Record<string, unknown>;
             record[name] = typeof record[name] === "string" ? "" : undefined;
           }

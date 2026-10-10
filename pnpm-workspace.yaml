@@ -1,5 +1,4 @@
 packages:
-  # Workspace package paths. Glob patterns are supported
   - packages/*
 
 allowBuilds:

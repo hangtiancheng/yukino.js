@@ -55,7 +55,7 @@ describe("Cache", () => {
   it("close makes cache reject adds", () => {
     const cache = new Cache({ maxBytes: 128, cleanupTime: 3_600_000 });
     cache.close();
-    cache.close(); // idempotent
+    cache.close();
     cache.add("closed", new ByteView(Buffer.from("value")));
     expect(cache.len()).toBe(0);
   });

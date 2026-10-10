@@ -43,8 +43,6 @@ describe("injectComponentHmrSnippet (webpack flavor)", () => {
     expect(output).toContain("import.meta.webpackHot.data?.oldComponent");
     expect(output).toContain("import.meta.webpackHot.dispose");
     expect(output).toContain("globalThis.__react_hmr__?.hotSwapByComponent");
-    // Webpack's accept(cb) is an ERROR handler — the vite accept-callback
-    // pattern must not leak in.
     expect(output).not.toContain("import.meta.hot.accept");
     expect(output).toContain("import.meta.webpackHot.accept((err)");
     expect(output).toContain("globalThis.location?.reload()");

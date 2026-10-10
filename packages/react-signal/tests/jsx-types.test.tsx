@@ -1,19 +1,9 @@
-/**
- * JSX typing tests — per-tag intrinsic element types (ported preact v10
- * DOM attribute layer). Compile-time assertions use `@ts-expect-error`
- * (enforced by `pnpm typecheck`); the runtime assertions double as smoke
- * tests that the typed shapes match reconciler behavior.
- */
-
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { render, unmount } from "../src/jsx/reconcile";
 import { useRef } from "../src/hooks";
 import { signal } from "../src/reactive";
 import type { HTMLAttributes } from "../src/jsx/dom-types";
 
-// Custom-element registration via module augmentation — the strict
-// IntrinsicElements story ("@yukino.js/react-signal/jsx-runtime" resolves to
-// src/jsx-runtime.ts through tsconfig paths).
 declare module "@yukino.js/react-signal/jsx-runtime" {
   namespace JSX {
     interface IntrinsicElements {
@@ -123,7 +113,6 @@ describe("jsx types — per-tag attributes", () => {
     // @ts-expect-error — unknown tags are compile errors (strict IntrinsicElements)
     render(<dvi />, host);
 
-    // "my-widget" is registered via `declare module "@yukino.js/react-signal/jsx-runtime"` below.
     const keys: string[] = [];
     render(
       <my-widget whatever={1} class="w" onKeyDown={(e) => keys.push(e.key)} />,

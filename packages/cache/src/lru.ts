@@ -94,7 +94,6 @@ class InternalCache {
       const removed: Node = { k: node.k, v: node.v, expireAt: node.expireAt };
       this.hashMap.delete(key);
       node.k = "";
-      // node.v = null;
       Reflect.set(node, "v", null);
       node.expireAt = 0;
       this.adjust(idx, N, P);
@@ -114,7 +113,6 @@ class InternalCache {
     const removed: Node = { k: node.k, v: node.v, expireAt: node.expireAt };
     this.hashMap.delete(node.k);
     node.k = "";
-    // node.v = null;
     Reflect.set(node, "v", null);
     node.expireAt = 0;
     this.adjust(idx, N, P);
@@ -224,7 +222,6 @@ export class LruStore implements Store {
         if (this.onEvicted) this.onEvicted(n1.k, n1.v);
         return [null, false];
       }
-      // promote to L2; drop any stale L2 copy first
       this.removeFromLevel(key, idx, 1);
       this.caches[idx][1].put(key, n1.v, n1.expireAt, (k, v) =>
         this.handleEviction(idx, k, v),

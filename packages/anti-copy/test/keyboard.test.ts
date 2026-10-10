@@ -34,11 +34,9 @@ describe("keyboard", () => {
   it("uses the physical key so non-Latin layouts cannot bypass", () => {
     instance = createAntiCopy({ selectStyle: false });
     instance.enable();
-    // Cyrillic layout: e.key is "с" but the physical key is KeyC.
     expect(
       fireKey({ key: "с", code: "KeyC", ctrlKey: true }).defaultPrevented,
     ).toBe(true);
-    // macOS Option dead key: e.key is "Dead" but the physical key is KeyI.
     expect(
       fireKey({ key: "Dead", code: "KeyI", metaKey: true, altKey: true })
         .defaultPrevented,
@@ -48,11 +46,9 @@ describe("keyboard", () => {
   it("matches e.key too, so remapped Latin layouts cannot bypass either", () => {
     instance = createAntiCopy({ selectStyle: false });
     instance.enable();
-    // AZERTY: pressing the "A" keycap reports e.key "a" on physical KeyQ.
     expect(
       fireKey({ key: "a", code: "KeyQ", ctrlKey: true }).defaultPrevented,
     ).toBe(true);
-    // Dvorak: pressing "I" for DevTools reports e.key "i" on physical KeyG.
     expect(
       fireKey({ key: "i", code: "KeyG", ctrlKey: true, shiftKey: true })
         .defaultPrevented,
@@ -66,7 +62,6 @@ describe("keyboard", () => {
     expect(fireKey({ key: "Insert", ctrlKey: true }).defaultPrevented).toBe(
       false,
     );
-    // Ctrl+X and Ctrl+A remain blocked in replace mode.
     expect(fireKey({ key: "x", ctrlKey: true }).defaultPrevented).toBe(true);
   });
 
@@ -125,13 +120,10 @@ describe("keyboard", () => {
     instance.enable();
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const input = document.getElementById("i")!;
-    // Polish "ś" is AltGr+S, reported as ctrlKey+altKey on physical KeyS:
-    // typing, not the save shortcut — must work even inside inputs.
     expect(
       fireKey({ key: "ś", code: "KeyS", ctrlKey: true, altKey: true }, input)
         .defaultPrevented,
     ).toBe(false);
-    // Polish "ć" is AltGr+C: not a copy shortcut, no violation either.
     expect(
       fireKey({ key: "ć", code: "KeyC", ctrlKey: true, altKey: true })
         .defaultPrevented,
