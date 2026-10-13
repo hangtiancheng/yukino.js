@@ -210,6 +210,61 @@ describe("createElement content-restricted tags", () => {
     }
   });
 
+  it("uses text children as the textarea initial value (React semantics)", () => {
+    render(jsx("textarea", { children: "init" }) as never, container);
+    expect(
+      (container.querySelector("textarea") as HTMLTextAreaElement).value,
+    ).toBe("init");
+  });
+
+  it("joins string and number children, skipping nullish/boolean ones", () => {
+    render(
+      jsx("textarea", { children: ["a", 2, null, false, "b"] }) as never,
+      container,
+    );
+    expect(
+      (container.querySelector("textarea") as HTMLTextAreaElement).value,
+    ).toBe("a2b");
+  });
+
+  it("lets an explicit value prop win over textarea children", () => {
+    render(
+      jsx("textarea", { children: "init", value: "v" }) as never,
+      container,
+    );
+    expect(
+      (container.querySelector("textarea") as HTMLTextAreaElement).value,
+    ).toBe("v");
+  });
+
+  it("lets an explicit defaultValue prop win over textarea children", () => {
+    render(
+      jsx("textarea", { children: "init", defaultValue: "d" }) as never,
+      container,
+    );
+    expect(
+      (container.querySelector("textarea") as HTMLTextAreaElement).value,
+    ).toBe("d");
+  });
+
+  it("still drops non-text textarea children", () => {
+    render(
+      jsx("textarea", { children: jsx("span", { children: "x" }) }) as never,
+      container,
+    );
+    const textarea = container.querySelector("textarea") as HTMLTextAreaElement;
+    expect(textarea.value).toBe("");
+    expect(textarea.childElementCount).toBe(0);
+  });
+
+  it("preserves user edits across re-renders with unchanged children", () => {
+    render(jsx("textarea", { children: "init" }) as never, container);
+    const textarea = container.querySelector("textarea") as HTMLTextAreaElement;
+    textarea.value = "edited";
+    render(jsx("textarea", { children: "init" }) as never, container);
+    expect(textarea.value).toBe("edited");
+  });
+
   it("renders template without a child expression (no throw)", () => {
     expect(() => render(jsx("template", {}) as never, container)).not.toThrow();
     expect(container.querySelector("template")).toBeTruthy();

@@ -10,21 +10,27 @@ description: >
   style → styleMap, ref → lit ref directive, hyphenated props → attributes,
   booleans → ?boolean-attribute plus property, everything else → property
   assignment even when undefined, key stripped, false/null/undefined children
-  skipped), createRoot/Root (render/unmount/duplicate-container warning),
+  skipped, <select value=/defaultValue> applied after options commit via the
+  selectValue directive, textarea text children forwarded as the initial
+  value), createRoot/Root (render/unmount/duplicate-container warning),
   the element registry (assignElements/resetElements tag overrides accepting
   plain strings or Lit StaticValues, default div fallback), the local
   customElement decorator that registers tag names for class-component JSX,
   re-exported Lit decorators (property, state, query, queryAll, queryAsync,
   queryAssignedElements, queryAssignedNodes, eventOptions), the spread
   directive, the full JSX→DOM event-name map, and the JSX type layer
-  (JSX.IntrinsicElements over HTMLElementTagNameMap). Testing setup:
-  vitest + jsdom (tests/). Trigger tokens: @yukino.js/lit-jsx, lit-jsx,
+  (JSX.IntrinsicElements over HTMLElementTagNameMap, React-style camelCase
+  event aliases like onKeyDown, custom-element onXxx callback properties
+  winning over native event types, numeric value/defaultValue widening).
+  Testing setup: vitest + jsdom (tests/) plus type-level fixtures
+  (tests/types/, checked by pnpm typecheck). Trigger tokens: @yukino.js/lit-jsx, lit-jsx,
   jsxImportSource "@yukino.js/lit-jsx", jsx-runtime, createRoot(,
   assignElements(, resetElements(, customElementRegistry, jsx(",
   Fragment(, yukino-lit-jsx. Use whenever a file in this repo uses JSX with
   LitElement/web components, configures jsxImportSource, or when the user
   mentions lit-jsx, JSX props not applying, onXxx handlers not firing on
-  custom elements, tag overrides, or lit-jsx tests. Do NOT use for React,
+  custom elements, select value/defaultValue not selecting the right option,
+  textarea children, tag overrides, or lit-jsx tests. Do NOT use for React,
   Next.js, Preact, Solid or Vue rendering; for Lit html`` templates without
   JSX; for lit's own decorators via "lit/decorators.js" (import them from
   @yukino.js/lit-jsx so tag names register); or for non-JSX Lit apps.
@@ -97,8 +103,14 @@ JSX → jsx(type, config)                      (src/jsx-runtime.ts)
     │   │   constructing once to read .localName) → createElement(tag, config)
     │   └─ plain function      → call type(config)   (functional component)
     └─ type is a string        → createElement(type, config)
-createElement                                  (src/core/createElement.ts)
+createElement                                  (src/core/create-element.ts)
     └─ resolve tag → html`<${tag} ${ref} ${spread(props)} style=${styleMap}>${children}</${tag}>`
+       ├─ <select>: value/defaultValue are hoisted out of the spread data and
+       │   applied by the selectValue directive as a child part *after* the
+       │   options commit (setting .value before any <option> exists is
+       │   silently ignored, then the browser falls back to the first option)
+       └─ <textarea>/<template>: no child expression (raw-text parsing);
+           textarea text children are forwarded as the initial value instead
 ```
 
 ### Tag resolution order (`getHTMLTag`)
@@ -145,17 +157,46 @@ Deliberate differences from React to keep in mind:
 - `false`/`true`/`null`/`undefined` children render nothing (React-style);
   lit-html alone would render booleans as text, so `parseChildren` filters
   them. `0` renders (also React-style).
+- `<select value={x}>` / `defaultValue={x}` behave like React: applied after
+  the option children commit (src/directives/select-value.ts). `value` is
+  re-applied on every render (controlled — a user change without a state
+  update snaps back); `defaultValue` is applied when it first appears or
+  changes, never on unrelated re-renders (uncontrolled — user selection
+  survives); array values select every matching option (`multiple`). The
+  `<option selected={...}>` pattern also works and needs no value prop.
+- `<textarea>{"text"}</textarea>` forwards text children (string/number,
+  joined; nullish/boolean skipped) as the initial `value` — React semantics.
+  Explicit `value`/`defaultValue` props win; non-text children are dropped
+  (lit-html cannot render child expressions inside raw-text elements).
+  `<template>` children are dropped as before.
+- `value`/`defaultValue` JSX types accept `number` (and `readonly string[]`)
+  like React's, on top of the DOM property types (`ValueProps` in
+  src/jsx-runtime.ts); the runtime assigns through the DOM property, which
+  coerces.
 
 ### Event name map
 
-`getNativeEventName` (src/utils/eventUtils.ts) maps React-style `onXxx` to
+`getNativeEventName` (src/utils/event-utils.ts) maps React-style `onXxx` to
 native names: `onDoubleClick→dblclick`, and the standard set including click,
 input, keydown/press/up, pointer*, mouse*, touch (start/move/end/cancel),
 drag*, focus/blur, scroll, submit, change, wheel, invalid, toggle,
 composition(start/update/end), animation(start/end/iteration/cancel),
 transition(start/end/cancel), beforeinput, load*, select*, auxclick, and
-more. Adding an event = adding one entry to `eventsMap` (tests cover the
-full list).
+more. Any `on[A-Z]…` prop lowercases to its native name, so both React
+camelCase (`onKeyDown`) and direct spellings (`onKeydown`) bind at runtime.
+Adding an event = adding one entry to `eventsMap` (tests cover the full
+list).
+
+The JSX type layer mirrors this: `NativeEventProps` generates
+`on${Capitalize<event>}` handlers from `HTMLElementEventMap`, and
+`ReactEventNames`/`ReactEventProps` (src/jsx-runtime.ts) add typed
+React-style aliases for every multi-word event (`onKeyDown`,
+`onDoubleClick`, `onTransitionEnd`, `onGotPointerCapture`, …), filtered
+against the consumer's `HTMLElementEventMap` so missing events degrade to
+the index signature instead of erroring. A custom element's own declared
+`onXxx` property types win over both (`Omit<EventProps, KnownKeys<T>>` —
+`KnownKeys` strips index signatures so `[name: string]: any` carriers like
+`<form>` keep their event props).
 
 ## Registry overrides (assignElements / resetElements)
 
@@ -245,9 +286,16 @@ and restates `experimentalDecorators`/`useDefineForClassFields: false` via
 `esbuild.tsconfigRaw` (needed to transform decorator tests). Tests import
 from `../src/*` directly — no build step required — and render with lit's
 `render()` into a detached `<div>` appended to `document.body`. Coverage:
-`createElement` prop semantics, registry overrides, event-name map, spread
-cleanup between renders, `createRoot` lifecycle, functional/class components
-and Fragment. Run with `pnpm test`.
+`createElement` prop semantics (incl. textarea children-as-value), select
+value/defaultValue ordering (`tests/select-value.test.ts`), registry
+overrides, event-name map, spread cleanup between renders, `createRoot`
+lifecycle, functional/class components and Fragment. Run with `pnpm test`.
+
+Type-level regressions live in `tests/types/jsx-types.tsx` (never executed —
+checked by `tsc -p tests/types/tsconfig.json`, which `pnpm typecheck` runs
+after the main `tsc --noEmit`; `@ts-expect-error` lines pin the negative
+cases: React event-name spellings, custom-element `onXxx` callback
+properties, numeric `value`, callback `ref` contextual typing).
 
 ## Known sharp edges
 
@@ -260,3 +308,10 @@ and Fragment. Run with `pnpm test`.
   "modernize" it away.
 - Property forwarding sets props even when `undefined` (unlike React) —
   intended, so reactive properties reset.
+- Former sharp edges, now fixed: `<select value=/defaultValue>` silently
+  selecting the first option (value now applies after options commit),
+  textarea text children being dropped (now the initial value), React-style
+  event names (`onKeyDown`) being implicit-any, numeric `value` on inputs
+  being a type error, custom-element `onXxx` callback properties colliding
+  with native event types, and unannotated callback refs (`ref={(el) => …}`)
+  being implicit-any.

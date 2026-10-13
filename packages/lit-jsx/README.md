@@ -85,10 +85,13 @@ export class MyGreeting extends LitElement {
 
 Prop handling follows React conventions where it makes sense and Lit/web-platform conventions where those differ:
 
-- `onXxx` props become real DOM event listeners on native tags (`onClick` → `click`, plus the full modern event surface — `onWheel`, `onTouchEnd`, composition, animation, transition events, etc.).
-- `onXxx` props on **your own custom elements** are not auto-bound: they are forwarded as properties, so the element decides what a prop named `onClick` means. The usual web-components pattern applies — dispatch a bubbling `CustomEvent` and listen for it on the parent.
+- `onXxx` props become real DOM event listeners on native tags (`onClick` → `click`, plus the full modern event surface — `onWheel`, `onTouchEnd`, composition, animation, transition events, etc.). Both React-style camelCase names (`onKeyDown`, `onDoubleClick`, `onTransitionEnd`, …) and the direct DOM spellings (`onKeydown`, `onDblclick`, …) are bound at runtime **and** typed.
+- `onXxx` props on **your own custom elements** are not auto-bound: they are forwarded as properties, so the element decides what a prop named `onClick` means. The usual web-components pattern applies — dispatch a bubbling `CustomEvent` and listen for it on the parent. If your element declares its own `onXxx` callback property, that declared type wins over the native event-handler typing (no more uncallable intersections).
 - `className` (or `class`) sets the class, `style` takes a camelCase style object (Lit's `styleMap`), and `ref` accepts Lit's ref objects or callbacks.
 - Hyphenated props (`data-*`, `aria-*`, …) become attributes; everything else is assigned as a DOM property — even when `undefined`, so reactive properties reset like you'd expect in Lit.
+- `value` / `defaultValue` accept numbers (and string arrays) like React's types do; string-valued DOM properties are coerced on assignment.
+- `<select value={x}>` and `<select defaultValue={x}>` work as in React: the value is applied **after** the `<option>` children commit (assigning `.value` before any option exists is silently ignored by the browser, which then falls back to the first option). `value` is re-applied on every render (controlled); `defaultValue` is applied when it first appears or changes but never overrides a newer user selection (uncontrolled); array values select every matching option for `multiple` selects.
+- `<textarea>{"initial text"}</textarea>` forwards text children as the initial value (React semantics), unless an explicit `value`/`defaultValue` prop is given. Non-text children are dropped — lit-html cannot render child expressions inside `<textarea>` (raw-text parsing).
 - `false`, `null` and `undefined` children render nothing, just like React (`{cond && <div />}` is safe).
 - `key` is accepted for React familiarity but unused — Lit's diffing has no key semantics.
 
