@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getNativeEventName } from "../src/utils/event-utils";
+import { getNativeEventName } from "@/utils/event-utils";
 
 describe("event name mapping", () => {
   it("maps React-style names to native DOM event names", () => {

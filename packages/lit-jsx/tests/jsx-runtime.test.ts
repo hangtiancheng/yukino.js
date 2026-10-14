@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "lit";
-import { jsx, Fragment } from "../src/jsx-runtime";
-import { customElement } from "../src/decorators";
+import { jsx, Fragment } from "@/jsx-runtime";
+import { customElement } from "@/decorators";
 
 let container: HTMLElement;
 

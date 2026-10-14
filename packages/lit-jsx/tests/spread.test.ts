@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { html, render } from "lit";
-import { jsx } from "../src/jsx-runtime";
-import { spread } from "../src/directives/spread";
+import { jsx } from "@/jsx-runtime";
+import { spread } from "@/directives/spread";
 
 let container: HTMLElement;
 

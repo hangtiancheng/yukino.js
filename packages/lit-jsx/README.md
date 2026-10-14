@@ -117,18 +117,84 @@ assignElements(customElements);
 resetElements();
 ```
 
-Override values can be plain strings (wrapped internally with Lit's `unsafeStatic`) or Lit static values such as `literal`my-button``. You can also override the `default` mapping that unknown tags fall back to (by default, `<div>`).
+Override values can be plain strings (wrapped internally with Lit's `unsafeStatic`) or Lit static values such as `literal`my-button``. You can also override the `default`mapping that unknown tags fall back to (by default,`<div>`).
 
 #### And why in the world would I want to do _that_?
 
 The original motivation behind this jsx-runtime was for a WebXR UI framework I was working on. In WebXR, any UI you make _has_ to be rendered using Canvas/webgl which is as fun as it sounds so I wanted to be able to define UI components using HTML syntax. My basic idea was to create webgl/three-js versions of each HTML element and then configure `lit-jsx` so that whenever the JSX called for say, a "button" to be rendered, the webgl equivalent would be rendered instead.
 
 I got a fair amount of it working including divs, images, text, overflow management, scroll bars, flex-box, border-radii, background colors, etc.
+
 <details>
 
 <summary>Expand to see the code for this "component"</summary>
 
 </details>
+
+## Community
+
+Optional, higher-level utilities built on top of the runtime live behind the `@yukino.js/lit-jsx/community` entry point.
+
+### Router
+
+A small react-router-flavored client-side router. Pick one of two location strategies — both share the same route matching, loader/action pipeline, hooks and components:
+
+- `createHashRouter(routes)` keeps the route in the URL hash (`#/users/42`). Works on any static host.
+- `createBrowserRouter(routes)` (alias `createHistoryRouter`) routes on the real pathname (`/users/42`) via the History API. The server must serve the app shell for every path.
+
+```tsx
+import { createRoot } from "@yukino.js/lit-jsx";
+import { createHashRouter, Link, Outlet } from "@yukino.js/lit-jsx/community";
+
+function Layout() {
+  return (
+    <div>
+      <nav>
+        <Link to="/">Home</Link>
+        <Link to="/users/42">User 42</Link>
+      </nav>
+      <Outlet />
+    </div>
+  );
+}
+
+createHashRouter([
+  {
+    path: "/",
+    element: Layout,
+    children: [
+      { index: true, element: Home },
+      {
+        path: "users/:id",
+        element: UserPage,
+        loader: ({ params }) => fetchUser(params.id),
+      },
+    ],
+  },
+]);
+
+createRoot(document.getElementById("app")!).render(<route-view />);
+```
+
+Route configs support `path`/`index` segments, `:params`, `*` catch-alls, nested `children` rendered through `<route-outlet>`, redirects (`{ path: "old", to: "/new" }`), and per-leaf `loader`/`action` functions. Leaf elements receive `{ params, loaderData, actionData, navigation }` as props.
+
+Components: `<route-view>` (renders the matched route chain), `<route-outlet>` (renders the next level), `Link`, `NavLink` (active-state className, `aria-current`), `Form` (submits to the route action), `Outlet(depth?)`, and `Fetcher` for out-of-band submissions.
+
+Hooks (all read from the shared router instance): `useParams`, `useLocation`, `useNavigate`, `useNavigation`, `useLoaderData`, `useActionData`, `useSearchParams`, `useMatch`, `useOutletContext`.
+
+The underlying `Router` class takes a swappable `LocationAdapter` (`HashLocation` / `HistoryLocation` are provided, custom strategies work too); `router.mode` reports the active one, and `router.stop()` detaches the URL listener.
+
+### PoweredByLit badge
+
+`PoweredByLit` renders a floating "Powered by Lit + @yukino.js/lit-jsx" badge with the lit logo.
+
+### Icon helpers
+
+`icon(svg, className)` and `iconWith(svg, { className, strokeWidth })` normalize lucide-style SVG strings (strip comments, collapse whitespace) and re-class / re-stroke them for inline use.
+
+### `?raw` imports
+
+The tsup build understands Vite-style `?raw` imports — `import text from "./file.svg?raw"` yields the file contents as a string default export (implemented as an esbuild plugin in `tsup.config.ts`; type-level support via `src/types/raw.d.ts`).
 
 ## Development
 

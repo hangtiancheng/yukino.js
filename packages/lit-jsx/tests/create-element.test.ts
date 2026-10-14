@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "lit";
-import { jsx } from "../src/jsx-runtime";
-import { createRef } from "../src/directives";
+import { jsx } from "@/jsx-runtime";
+import { createRef } from "@/directives";
 
 let container: HTMLElement;
 

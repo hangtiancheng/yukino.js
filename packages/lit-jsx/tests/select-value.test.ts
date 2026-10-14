@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "lit";
-import { jsx } from "../src/jsx-runtime";
+import { jsx } from "@/jsx-runtime";
 
 let container: HTMLElement;
 

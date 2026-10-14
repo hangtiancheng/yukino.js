@@ -14,7 +14,15 @@
     "strict": true,
     "target": "esnext",
     "useDefineForClassFields": false,
-    "sourceMap": false
+    "sourceMap": false,
+    "jsx": "react-jsx",
+    "jsxImportSource": "@yukino.js/lit-jsx",
+    "paths": {
+      "@yukino.js/lit-jsx": ["./src/index.ts"],
+      "@yukino.js/lit-jsx/jsx-runtime": ["./src/jsx-runtime.ts"],
+      "@yukino.js/lit-jsx/jsx-dev-runtime": ["./src/jsx-runtime.ts"],
+      "@/*": ["./src/*"]
+    }
   },
   "exclude": ["node_modules", "dist", "tests/types"],
   "include": ["./src", "./tests"]

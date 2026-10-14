@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { jsx } from "../src/jsx-runtime";
-import { createRoot } from "../src/core/create-root";
+import { jsx } from "@/jsx-runtime";
+import { createRoot } from "@/core/create-root";
 
 let container: HTMLElement;
 

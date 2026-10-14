@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "lit";
 import { literal } from "lit/static-html.js";
-import { jsx } from "../src/jsx-runtime";
-import { assignElements, resetElements } from "../src/core/create-element";
+import { jsx } from "@/jsx-runtime";
+import { assignElements, resetElements } from "@/core/create-element";
 
 let container: HTMLElement;
 

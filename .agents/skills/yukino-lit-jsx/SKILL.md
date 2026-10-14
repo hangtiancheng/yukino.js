@@ -12,10 +12,16 @@ description: >
   div fallback; lit-jsx customElement decorator; re-exported lit
   decorators; spread/createRef; onXxx to lowercase event mapping; JSX type
   layer (React event aliases, custom onXxx props win, numeric value).
-  vitest+jsdom tests, type fixtures via pnpm typecheck. Triggers: lit-jsx,
-  jsxImportSource, jsx-runtime, createRoot(, assignElements(. Use for JSX
-  with LitElement/web components. NOT for React, Vue, Preact, Solid, plain
-  lit html templates, non-JSX Lit.
+  vitest+jsdom tests, type fixtures via pnpm typecheck. Also covers the
+  @yukino.js/lit-jsx/community entry: dual-mode router (createHashRouter,
+  createBrowserRouter/createHistoryRouter, LocationAdapter, HashLocation,
+  HistoryLocation, route-view/route-outlet, Link/NavLink/Form/Outlet/Fetcher,
+  useParams/useLocation/useNavigate/useLoaderData/useSearchParams/useMatch),
+  PoweredByLit badge, icon helpers, and Vite-style ?raw imports in the tsup
+  build. Triggers: lit-jsx, jsxImportSource, jsx-runtime, createRoot(,
+  assignElements(, createHashRouter, createBrowserRouter, community router.
+  Use for JSX with LitElement/web components. NOT for React, Vue, Preact,
+  Solid, plain lit html templates, non-JSX Lit.
 ---
 
 # @yukino.js/lit-jsx
@@ -30,8 +36,9 @@ JSX output renders anywhere a Lit template does: `LitElement.render()`,
 
 - Package: `@yukino.js/lit-jsx` v0.0.1 (workspace package at `packages/lit-jsx/`)
 - Source root: `packages/lit-jsx/src/` (core, directives, decorators, utils, types)
-- Build: `tsup` — ESM + CJS + dts, clean, minify; entries `src/index.ts` and
-  `src/jsx-runtime.ts`
+- Build: `tsup` — ESM + CJS + dts, clean, minify; entries `src/index.ts`,
+  `src/jsx-runtime.ts` and `src/community/index.ts`; a `raw-import` esbuild
+  plugin in `tsup.config.ts` implements Vite-style `?raw` imports
 - Scripts: `pnpm build`, `pnpm test` (`vitest run` + jsdom, `tests/`),
   `pnpm typecheck`
 - The build copies this skill from `.agents/skills/yukino-lit-jsx` into
@@ -44,6 +51,7 @@ JSX output renders anywhere a Lit template does: `LitElement.render()`,
 | `@yukino.js/lit-jsx`                 | Re-exports everything from `lit` PLUS `createRoot`, `assignElements`, `resetElements`, decorators, directives (`spread`, `createRef`, `Ref`), types. Import `LitElement`, `html`, decorators etc. from here, not from `lit`, so the runtime's wiring is consistent. |
 | `@yukino.js/lit-jsx/jsx-runtime`     | The automatic JSX runtime (`jsx`, `jsxs`, `jsxDEV`, `Fragment`). Referenced by the transpiler via `jsxImportSource`; you rarely import it by hand.                                                                                                                  |
 | `@yukino.js/lit-jsx/jsx-dev-runtime` | Same dist files as `jsx-runtime` (package.json `exports` maps both specifiers to `dist/jsx-runtime.*`).                                                                                                                                                             |
+| `@yukino.js/lit-jsx/community`       | Optional higher-level utilities: the dual-mode router (hash + history), the `PoweredByLit` badge, icon helpers. Built from `src/community/index.ts` to `dist/community/index.*`.                                                                                    |
 
 Note: lit's main entry does not export `literal`/`unsafeStatic`; import
 those from `lit/static-html.js` when you need them.
@@ -286,6 +294,85 @@ root.unmount();            // clears the container, detaches the root
 - `render()` after `unmount()` throws "Cannot render an unmounted root."
 - Containers are tracked in `Root._roots` (module-level Map).
 
+## Community entry (@yukino.js/lit-jsx/community)
+
+Barrel `src/community/index.ts` → `dist/community/index.*` (package.json
+`exports["./community"]`). Re-exports three modules: router, icon,
+powered-by.
+
+### Router (src/community/router.tsx)
+
+A react-router-flavored client-side router bound to a module-level singleton
+`router` — every hook and the `<route-view>`/`<route-outlet>` elements read
+from it. Two location strategies share one core:
+
+- `createHashRouter(routes)` — the route lives in `location.hash`
+  (`#/users/42`); listens to `hashchange`; works on any static host.
+- `createBrowserRouter(routes)` (alias `createHistoryRouter`) — the route is
+  the real pathname via the History API; listens to `popstate`; needs a
+  server fallback to the app shell.
+
+Both configure + start the singleton and return it; calling one after the
+other switches modes at runtime. `router.mode` reports `"hash" | "history"`,
+`router.stop()` detaches the URL listener, `router.use(adapter)` swaps the
+strategy directly (re-subscribing when started).
+
+The strategy is a `LocationAdapter` (`getPath`/`getSearch`/`createHref`/
+`requestUrl`/`listen`/`push`/`replace`); `HashLocation` and `HistoryLocation`
+implement it (shared instances `hashLocation`/`historyLocation`). `push`/
+`replace` return whether the browser will fire a change event on its own —
+true only when the hash actually changes — so `navigate()` knows when to
+resolve immediately (History API never fires `popstate` for pushState).
+`Link`/`NavLink` hrefs are mode-aware via `router.createHref`.
+
+Route matching: `flatten` compiles `RouteConfig[]` (nested `children`,
+`index`, `:params`, `*` catch-all, `{ to, replace }` redirects) into ranked
+flat routes; `bestMatch` prefers static > param > catch-all. Leaf elements
+receive `{ params, loaderData, actionData, navigation }` props; `loader` runs
+on match (navigation state `"loading"`), `action` runs via `router.submit`,
+`<Form>` or `Fetcher` (state `"submitting"`, then the loader re-runs). Stale
+loader results are dropped via a resolve token.
+
+Hooks: `useParams`, `useLocation`, `useNavigate`, `useNavigation`,
+`useLoaderData`, `useActionData`, `useSearchParams` (setter navigates),
+`useMatch(pattern)`, `useOutletContext`/`setOutletContext`. Components:
+`Link`, `NavLink` (active className string/fn + `aria-current`), `Form`,
+`Outlet(depth)`, `Fetcher`. `RoutedElement` is the LitElement base that
+re-renders on router change (light DOM, `display: block`); `RouteView` /
+`RouteOutlet` register as `<route-view>` / `<route-outlet>`. router.tsx also
+re-exports `createRoot` and `jsx` for convenience.
+
+Note: router.tsx imports lit directly (`lit`, `../decorators`,
+`../core/create-root`, `../jsx-runtime`) — NOT the `../index` barrel. esbuild
+cannot statically verify named imports through `export * from "lit"` when lit
+is external, so barrel imports fail the ESM build with "No matching export".
+
+### PoweredByLit (src/community/powered-by.tsx)
+
+Floating "Powered by Lit + @yukino.js/lit-jsx" badge. The only file in src
+using real JSX syntax, and the reason the package tsconfig sets
+`"jsx": "react-jsx"` + `"jsxImportSource": "@yukino.js/lit-jsx"` with `paths`
+mapping the self-reference back to `./src/*` (no `baseUrl` — deprecated in
+TS 6). The lit logo arrives via `import litSvg from "../assets/lit.svg?raw"`.
+
+### Icon helpers (src/community/icon.ts)
+
+`icon(svg, className?)` strips comments/newlines and swaps the `lucide`
+class; `iconWith(svg, { className, strokeWidth })` also overrides
+stroke-width.
+
+### ?raw imports
+
+Vite-style `?raw` works in all three toolchains: tsup via the `raw-import`
+esbuild plugin in `tsup.config.ts` (reads the file, emits
+`export default "<contents>"`, registers `watchFiles`), vitest via Vite's
+native `?raw` support, and tsc via the ambient `declare module "*?raw"` in
+`src/types/raw.d.ts`. vitest.config.ts maps the self-reference
+(`@yukino.js/lit-jsx` plus `/jsx-runtime` and `/jsx-dev-runtime`) to src via
+`resolve.alias` — longest keys first, vite alias matching is prefix-based;
+the transformer (oxc in vitest 5) reads decorator/JSX options straight from
+tsconfig.json.
+
 ## Rendering surface details
 
 - `createElement` always renders an open+close tag pair with children inside;
@@ -310,7 +397,11 @@ ordering (`tests/select-value.test.ts`), registry overrides (incl. overrides
 mapping to `textarea`), the event-name Proxy incl. derived names outside the
 special-case map, spread cleanup between renders (handler swap, reused-node
 property resets), `createRoot` lifecycle, functional/class components and
-Fragment. Run with `pnpm test`.
+Fragment. Run with `pnpm test`. Router coverage lives in
+`tests/router.test.ts` (hash + history modes, redirects, search params,
+loaders/actions, Fetcher, mode switching, popstate/hashchange flows) and
+the community barrel, `?raw` imports and `PoweredByLit` in
+`tests/community.test.ts`.
 
 Type-level regressions live in `tests/types/jsx-types.tsx` (never executed —
 checked by `tsc -p tests/types/tsconfig.json`, which `pnpm typecheck` runs
@@ -337,5 +428,12 @@ names, custom-element `onXxx` callback properties, numeric
   "modernize" it away.
 - Nullish prop values set nothing (neither attributes nor properties) and
   only clear DOM state through the removal/cleanup path on re-render.
+- The community router is a module singleton: `createHashRouter`/
+  `createBrowserRouter` reconfigure the same `router` instance that all
+  hooks and `<route-view>`/`<route-outlet>` elements read from.
+- Inside this package, never import lit symbols through the `src/index.ts`
+  barrel from another entry (e.g. community): `export * from "lit"` with
+  lit external breaks esbuild's ESM named-export verification. Import from
+  `lit` (or the concrete local module) directly.
 - `literal`/`unsafeStatic` come from `lit/static-html.js`, not the
   `@yukino.js/lit-jsx` root entry.
