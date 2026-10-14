@@ -186,7 +186,7 @@ The underlying `Router` class takes a swappable `LocationAdapter` (`HashLocation
 
 ### PoweredByLit badge
 
-`PoweredByLit` renders a floating "Powered by Lit + @yukino.js/lit-jsx" badge with the lit logo.
+`PoweredByLit` renders a floating "Powered by Lit + @yukino.js/lit-jsx" badge with the lit logo. It is styled entirely with inline styles (lit-jsx's `style` prop → Lit `styleMap`) — no Tailwind or other CSS framework needed; the `powered-by-lit` / `powered-by-lit-badge` class names are stable hooks for overrides.
 
 ### Icon helpers
 

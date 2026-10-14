@@ -349,7 +349,10 @@ is external, so barrel imports fail the ESM build with "No matching export".
 
 ### PoweredByLit (src/community/powered-by.tsx)
 
-Floating "Powered by Lit + @yukino.js/lit-jsx" badge. The only file in src
+Floating "Powered by Lit + @yukino.js/lit-jsx" badge. Styled entirely via
+lit-jsx's `style` prop (Lit `styleMap`) — NO Tailwind/CSS framework (the
+repo has none); `powered-by-lit`/`powered-by-lit-badge` class names stay as
+override hooks. The only file in src
 using real JSX syntax, and the reason the package tsconfig sets
 `"jsx": "react-jsx"` + `"jsxImportSource": "@yukino.js/lit-jsx"` with `paths`
 mapping the self-reference back to `./src/*` (no `baseUrl` — deprecated in

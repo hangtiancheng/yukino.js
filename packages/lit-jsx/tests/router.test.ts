@@ -108,7 +108,7 @@ describe("hash router", () => {
     expect(window.location.hash).toBe("#/users/42");
     const layout = container.querySelector("#layout");
     expect(layout).toBeTruthy();
-    expect(layout!.querySelector("#user")!.textContent).toBe(
+    expect(layout!.querySelector("#user")!.textContent!.trim()).toBe(
       "user:42:loaded-42",
     );
     expect(useParams()).toEqual({ id: "42" });
@@ -172,7 +172,7 @@ describe("history router", () => {
     await settle();
     expect(window.location.pathname).toBe("/users/7");
     expect(window.location.hash).toBe("");
-    expect(container.querySelector("#user")!.textContent).toBe(
+    expect(container.querySelector("#user")!.textContent!.trim()).toBe(
       "user:7:loaded-7",
     );
   });
@@ -231,7 +231,7 @@ describe("mode switching", () => {
     window.history.replaceState(null, "", "/users/2");
     window.dispatchEvent(new PopStateEvent("popstate"));
     await settle();
-    expect(container.querySelector("#user")!.textContent).toBe(
+    expect(container.querySelector("#user")!.textContent!.trim()).toBe(
       "user:2:loaded-2",
     );
   });

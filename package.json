@@ -12,7 +12,7 @@
   },
   "type": "module",
   "scripts": {
-    "format": "concurrently \"pnpm --filter @yukino.js/anti-copy format\" \"pnpm --filter @yukino.js/cache format\" \"pnpm --filter @yukino.js/react format\" \"pnpm --filter @yukino.js/react-signal format\"",
+    "format": "concurrently \"pnpm --filter @yukino.js/anti-copy format\" \"pnpm --filter @yukino.js/cache format\" \"pnpm --filter @yukino.js/lit-jsx format\" \"pnpm --filter @yukino.js/react format\" \"pnpm --filter @yukino.js/react-signal format\"",
     "git:config": "git config user.name hangtiancheng && git config user.email '161043261@qq.com'",
     "git:commit": "git add -A && git commit -m \"feat: Introduce new features\"",
     "git:push": "pnpm git:commit && git push origin main",

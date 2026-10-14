@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { html, render } from "lit";
 import type { TemplateResult } from "lit";
 import litSvg from "@/assets/lit.svg?raw";
@@ -8,13 +8,14 @@ import * as community from "@/community";
 
 let container: HTMLDivElement;
 
-afterEach(() => {
-  if (container) {
-    render(html``, container);
-    container.remove();
-  }
+beforeEach(() => {
   container = document.createElement("div");
   document.body.appendChild(container);
+});
+
+afterEach(() => {
+  render(html``, container);
+  container.remove();
 });
 
 describe("?raw imports", () => {
@@ -27,8 +28,6 @@ describe("?raw imports", () => {
 
 describe("PoweredByLit", () => {
   it("renders the resized lit logo and label", () => {
-    container = document.createElement("div");
-    document.body.appendChild(container);
     render(html`${PoweredByLit() as TemplateResult}`, container);
     const svg = container.querySelector("svg");
     expect(svg).toBeTruthy();
@@ -36,6 +35,27 @@ describe("PoweredByLit", () => {
     expect(svg!.getAttribute("height")).toBe("16");
     expect(container.textContent).toContain("Powered by Lit");
     expect(container.textContent).toContain("@yukino.js/lit-jsx");
+  });
+
+  it("styles itself without any CSS framework", () => {
+    render(html`${PoweredByLit() as TemplateResult}`, container);
+    const outer = container.querySelector<HTMLElement>(".powered-by-lit")!;
+    expect(outer.style.position).toBe("fixed");
+    expect(outer.style.bottom).toBe("12px");
+    expect(outer.style.right).toBe("12px");
+    expect(outer.style.zIndex).toBe("50");
+    expect(outer.style.pointerEvents).toBe("none");
+
+    const badge = container.querySelector<HTMLElement>(
+      ".powered-by-lit-badge",
+    )!;
+    expect(badge.style.display).toBe("flex");
+    expect(badge.style.alignItems).toBe("center");
+    expect(badge.style.borderRadius).toBe("9999px");
+    expect(badge.style.pointerEvents).toBe("auto");
+
+    const mono = badge.querySelectorAll("span")[1] as HTMLElement;
+    expect(mono.style.fontFamily).toContain("monospace");
   });
 });
 
