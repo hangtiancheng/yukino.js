@@ -17,10 +17,11 @@ Source of truth: `src/vite.ts`, `src/webpack.ts`, `src/hmr-inject.ts`,
 
 The JSX transform is ALWAYS the bundler's TS/JS pipeline reading this
 tsconfig — no plugin configures it for you. For webpack (or any non-Vite)
-project, additionally add `"@yukino.js/react-signal/client"` to `types` (or
-a triple-slash reference) so `*.css` module imports and the HMR globals
-type-check; Vite projects should rely on `vite/client` instead (including
-both produces conflicting declarations).
+project, add `"@yukino.js/react-signal/client"` to `types` (or a
+triple-slash reference) for the `__yukino_hmr__` global and
+`import.meta.webpackHot` (`accept`/`dispose`/`data`) ambient types —
+`src/client.d.ts` declares nothing else; CSS-module typing comes from
+`vite/client` in Vite projects (webpack projects declare it themselves).
 
 ## Bundler plugins
 
@@ -38,9 +39,10 @@ export default defineConfig({
 });
 ```
 
-- Injects component HMR into every `.tsx`/`.jsx` module with a line-leading
-  `export default` (dev server only — production builds skip the transform;
-  runtime guards make non-component exports a no-op).
+- Injects component HMR into every `.tsx`/`.jsx` module (outside
+  `node_modules`) with a line-leading `export default` (dev server only —
+  production builds skip the transform; runtime guards make non-component
+  exports a no-op).
 - It does NOT touch the JSX transform — `tsconfig.json` above is what makes
   `.tsx` compile against `@yukino.js/react-signal/jsx-runtime`.
 
@@ -158,7 +160,7 @@ src/
   views/{name}.module.css     CSS module imported by the component
   components/{name}.tsx       child components (imported as JSX tags)
   store/{name}.ts             createStore definitions
-index.html                    <div id="root"></div> + module script for main.ts
+index.html                    <div id="root"></div> + module script for main.tsx
 ```
 
 Routes hold imported component references (or `lazy()` loaders) — there are

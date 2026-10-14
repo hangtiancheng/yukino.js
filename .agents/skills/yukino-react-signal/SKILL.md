@@ -1,44 +1,28 @@
 ---
 name: yukino-react-signal
 description: >-
-  Authoritative reference for @yukino.js/react-signal (v0.0.36, signals-only,
-  react-router-aligned, factory router), the functional-first TypeScript
-  frontend framework located at packages/react-signal — plain function
-  components ((props) => JSX, body re-runs per render, hostless instances
-  with NO wrapper elements), call-order-indexed hooks with NO deps arrays
-  (useSignal, useRef, useComputed, useSignalEffect, useEffect is MOUNT-ONLY,
-  onCleanup, useBlocker, useUrlState with stable setter), signals reactivity
-  via @preact/signals-core (one render effect per instance, shallow
-  reference comparison, NO event emitters, NO error-swallowing wrappers —
-  errors bubble), per-key reactive props with plain callback props and
-  props.children, React-DOM-style render(vnode, container) / unmount, direct
-  VNode → DOM reconciliation (keyed diff, comment end-anchors), a
-  FACTORY-based history-only router aligned with react-router's data model
-  (createRouter(routes, {basename}) — no module singleton,
-  location/match/params/searchParams signals, ranked "/users/:id" and "*"
-  matching, navigate(to, {replace, state}), async block()/useBlocker,
-  <RouterView/> outlet with per-route lazy() dedup, useRouter() active
-  instance), anonymous zustand-aligned createStore(creator) with
-  auto-tracked computed and selector subscribe, and Vite/Webpack plugins
-  with auto-injected state-preserving component HMR (hotSwapByComponent,
-  registered once at the index entry). Use this skill whenever the user
-  reads, writes, debugs, reviews, or extends code that imports from
-  "@yukino.js/react-signal" (or any sub-path like /vite, /webpack,
-  /jsx-runtime, /client), works under packages/react-signal, or mentions
-  any of these symbols — render, unmount, FC, useSignal, useComputed,
-  useSignalEffect, useEffect, onCleanup, createRouter, RouterView,
-  useRouter, useBlocker, useUrlState, matchRoutes, RouteObject, createStore,
-  raw, yukinoReactSignalPlugin, YukinoReactSignalPlugin, hotSwapByComponent
-  — or asks "why doesn't my component re-render". Even if the user just
-  says "add a page/view/component to the Yukino app", consult this skill
-  first. SWR-style async server state is intentionally OUT of this package
-  (a future dedicated package built on the same signals).
+  Authoritative reference for @yukino.js/react-signal v0.0.1
+  (packages/react-signal), a signals-only functional-first framework:
+  hostless components (one render effect per instance, shallow compares,
+  errors bubble), call-order hooks with NO deps arrays (useEffect is
+  MOUNT-ONLY), per-key reactive props, VNode-to-DOM keyed diff, a factory
+  react-router-aligned history-only router with
+  location/match/params/searchParams signals, navigate, blockers, lazy
+  route dedup, anonymous zustand-aligned createStore, Vite/Webpack auto-HMR
+  plugins. Use when code imports @yukino.js/react-signal or /vite,
+  /webpack, /jsx-runtime, /jsx-dev-runtime, /client, or mentions render,
+  unmount, FC, useSignal, useRef, useComputed, useSignalEffect, useEffect,
+  onCleanup, createRouter, RouterView, useRouter, useBlocker, useUrlState,
+  matchRoutes, RouteObject, createStore, raw, Fragment, hotSwapByComponent,
+  yukinoReactSignalPlugin, YukinoReactSignalPlugin — or asks why a
+  component does not re-render. SWR-style async state is out of this
+  package.
 ---
 
 # yukino-react-signal Framework (`@yukino.js/react-signal`)
 
 A lightweight, functional-first TypeScript framework for SPAs and
-micro-frontends. Source: `packages/react-signal` (v0.0.36, ESM+CJS dual
+micro-frontends. Source: `packages/react-signal` (v0.0.1, ESM+CJS dual
 build; reactive core re-exported from `@preact/signals-core`, the typed JSX
 attribute layer is sourced type-only from `preact`).
 
@@ -58,14 +42,14 @@ boots with `render(<RouterView router={r}/>, container)` (routed) or
 
 ## Package entry points
 
-| Import                                    | Provides                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@yukino.js/react-signal`                 | Runtime: `render`, `unmount`, `signal`, `computed`, `effect`, `batch`, `untracked`, `Signal`, hooks (`useSignal`, `useRef`, `useComputed`, `useSignalEffect`, `useEffect` mount-only, `onCleanup`), `createRouter`/`RouterView`/`useRouter`/`useBlocker`/`matchPath`/`matchRoutes`, `createStore`, `useUrlState`, `hotSwapByComponent`, all types (`FC`, `Location`, `RouteObject`, `RouterApi`, ...) plus the `JSX` type namespace and per-tag DOM attribute types |
-| `@yukino.js/react-signal/jsx-runtime`     | JSX automatic runtime (`jsx`/`jsxs`, `Fragment`, `raw`, JSX types) — referenced by `jsxImportSource`, not imported by hand                                                                                                                                                                                                                                                                                                                                          |
-| `@yukino.js/react-signal/jsx-dev-runtime` | `jsxDEV` dev runtime (debug args accepted and ignored)                                                                                                                                                                                                                                                                                                                                                                                                              |
-| `@yukino.js/react-signal/vite`            | `yukinoReactSignalPlugin()` — auto component HMR (dev only); the JSX transform comes from tsconfig                                                                                                                                                                                                                                                                                                                                                                  |
-| `@yukino.js/react-signal/webpack`         | `YukinoReactSignalPlugin` (recommended), `yukinoReactSignalLoader` (also the default export)                                                                                                                                                                                                                                                                                                                                                                        |
-| `@yukino.js/react-signal/client`          | Ambient types for webpack/non-Vite projects: `__yukino_hmr__`, `import.meta.webpackHot`, `*.module.css`/`*.css` modules (Vite projects use `vite/client` instead)                                                                                                                                                                                                                                                                                                   |
+| Import                                    | Provides                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@yukino.js/react-signal`                 | Runtime: `render`, `unmount`, `raw`, `Fragment`, `signal`, `computed`, `effect`, `batch`, `untracked`, `Signal`, hooks (`useSignal`, `useRef`, `useComputed`, `useSignalEffect`, `useEffect` mount-only, `onCleanup`), `createRouter`/`RouterView`/`useRouter`/`useBlocker`/`matchPath`/`matchRoutes`, `createStore`, `useUrlState`, `hotSwapByComponent`, all types (`FC`, `Location`, `RouteObject`, `RouterApi`, ...) plus the `JSX` type namespace and per-tag DOM attribute types |
+| `@yukino.js/react-signal/jsx-runtime`     | JSX automatic runtime (`jsx`/`jsxs`, `Fragment`, `raw`, JSX types) — referenced by `jsxImportSource`, not imported by hand                                                                                                                                                                                                                                                                                                                                                             |
+| `@yukino.js/react-signal/jsx-dev-runtime` | `jsxDEV` dev runtime (debug args accepted and ignored)                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `@yukino.js/react-signal/vite`            | `yukinoReactSignalPlugin()` — auto component HMR (dev only); the JSX transform comes from tsconfig                                                                                                                                                                                                                                                                                                                                                                                     |
+| `@yukino.js/react-signal/webpack`         | `YukinoReactSignalPlugin` (recommended), `yukinoReactSignalLoader` (also the default export)                                                                                                                                                                                                                                                                                                                                                                                           |
+| `@yukino.js/react-signal/client`          | Types-only ambient declarations for non-Vite projects: `__yukino_hmr__` global + `import.meta.webpackHot` (`accept`/`dispose`/`data`); no CSS-module declarations (Vite projects get CSS typing from `vite/client`)                                                                                                                                                                                                                                                                    |
 
 tsconfig (required on every bundler — the plugins do NOT configure the JSX
 transform): `"jsx": "react-jsx"`, `"jsxImportSource": "@yukino.js/react-signal"`.

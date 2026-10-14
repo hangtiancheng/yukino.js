@@ -1,11 +1,11 @@
 ---
 name: yukino-cache
-description: Authoritative reference for the @yukino.js/cache distributed in-memory cache package located at packages/cache (TypeScript/Node.js ≥ 20, pure ESM, published as `@yukino.js/cache`), a groupcache-style peer-to-peer sharded read-through cache over gRPC with etcd discovery. Use this skill whenever the user reads, writes, debugs, reviews, or extends code that imports from `@yukino.js/cache`, references the `packages/cache` source tree, or runs its demo/runner (`packages/cache/src/main.ts`, `packages/cache/bootstrap.js`). Trigger eagerly on any of these exported symbols—`Group`, `newGroup`, `getGroup`, `listGroups`, `destroyGroup`, `destroyAllGroups`, `Getter`, `GroupOption`, `GroupStats`, `withExpiration`, `withPeers`, `withCacheOptions`, `Cache`, `CacheOptions`, `CacheStats`, `defaultCacheOptions`, `Value`, `Store`, `StoreOptions`, `defaultStoreOptions`, `LruStore`, `hashBKRD`, `maskOfNextPowOf2`, `ByteView`, `cloneBytes`, `SingleFlightGroup`, `ConHashMap`, `ConHashOption`, `withConHashConfig`, `ConHashConfig`, `defaultConHashConfig`, `crc32`, `HashFunc`, `Peer`, `PeerPicker`, `Client`, `ClientOptions`, `deadlineMs`, `ClientPicker`, `PickerOption`, `peerDeadlineMs`, `Server`, `ServerOptions`, `advertiseAddr`, `register`, `RegisterConfig`, `defaultRegisterConfig`, `leaseTTL`, `ServiceDiscovery`, `validPeerAddr`, `getLocalIP`, `Logger`, `log`, `setLogger`, the `pb.YukinoCache` gRPC service (Get/Set/Delete RPCs), the `grpc.health.v1.Health` Check RPC, the etcd key layout `/services/{svcName}/{addr}`, and the `x-peer-request` metadata flag—and on conceptual phrases like "groupcache for Node", "TypeScript distributed cache with consistent hashing", "single-flight cache stampede", "cache miss thundering herd", "etcd-based peer discovery", "two-level LRU cache", "peer fan-out write propagation", or file paths under `packages/cache/src/**`. Do NOT use this skill for the Go sibling `github.com/hangtiancheng/yukino.go/yukino_cache` (covered by its own Go skill; same architecture and wire format but PascalCase naming and `context.Context`/goroutine concurrency).
+description: Authoritative reference for @yukino.js/cache (packages/cache, v0.0.1; ESM, Node.js ≥ 20), a groupcache-style peer-to-peer sharded read-through cache over gRPC with etcd discovery. Use for code importing it or touching packages/cache (src/main.ts, dev.js). Trigger on exports Group/newGroup/getGroup/listGroups/destroyGroup/destroyAllGroups/Getter/GroupStats/withExpiration/withPeers/withCacheOptions/Cache/CacheOptions/defaultCacheOptions/Value/Store/defaultStoreOptions/LruStore/ByteView/cloneBytes/SingleFlightGroup/ConHashMap/withConHashConfig/ConHashConfig/defaultConHashConfig/crc32/Peer/PeerPicker/Client/ClientOptions/ClientPicker/PickerOption/Server/ServerOptions/register/RegisterConfig/defaultRegisterConfig/ServiceDiscovery/validPeerAddr/getLocalIP/Logger/log/setLogger, plus pb.YukinoCache Get/Set/Delete, grpc.health.v1.Health Check, x-peer-request metadata, etcd key /services/{svcName}/{addr}, consistent hashing, single-flight, two-level LRU, peer fan-out. Not for Go sibling yukino.go/yukino_cache.
 ---
 
 # @yukino.js/cache — Distributed Cache for Node.js
 
-`@yukino.js/cache` is a TypeScript port of the groupcache architecture, redesigned for the Node.js runtime and shipped from `packages/cache` as pure ESM (`"type": "module"`, `engines.node >= 20`; `main`, `module`, and `exports["."].import` all point at `dist/index.mjs`, types at `dist/index.d.ts`). It composes a coherent set of building blocks—`Group`, `Cache`, `LruStore`, `ByteView`, `SingleFlightGroup`, `ConHashMap`, `Client`/`ClientPicker`, `Server`, and etcd registration/discovery—into a peer-to-peer, eventually consistent, sharded read-through cache reachable over gRPC. Runtime dependencies: `@grpc/grpc-js`, `@grpc/proto-loader`, `etcd3` (all hard dependencies; there are no peerDependencies). It is suitable as an in-process L1 cache (use `Cache` + `ByteView` standalone) or as a clustered cache with peer fan-out; it is NOT a replicated store, offers no quorum or anti-entropy, and must not be used where strong consistency or durability is required.
+`@yukino.js/cache` (currently v0.0.1) is a TypeScript port of the groupcache architecture, redesigned for the Node.js runtime and shipped from `packages/cache` as pure ESM (`"type": "module"`, `engines.node >= 20`; `main`, `module`, and `exports["."].import` all point at `dist/index.mjs`, types at `dist/index.d.ts`). It composes a coherent set of building blocks—`Group`, `Cache`, `LruStore`, `ByteView`, `SingleFlightGroup`, `ConHashMap`, `Client`/`ClientPicker`, `Server`, and etcd registration/discovery—into a peer-to-peer, eventually consistent, sharded read-through cache reachable over gRPC. Runtime dependencies: `@grpc/grpc-js`, `@grpc/proto-loader`, `etcd3` (all hard dependencies; there are no peerDependencies). It is suitable as an in-process L1 cache (use `Cache` + `ByteView` standalone) or as a clustered cache with peer fan-out; it is NOT a replicated store, offers no quorum or anti-entropy, and must not be used where strong consistency or durability is required.
 
 The package intentionally mirrors the Go sibling `yukino.go/yukino_cache`: APIs, semantics, etcd key layout, and wire format match symbol-for-symbol; only naming conventions and language-idiomatic concurrency diverge. When a user mentions concepts that exist on both sides, confirm whether they mean the TypeScript package (this skill) or the Go module (the Go skill).
 
@@ -13,11 +13,12 @@ The package intentionally mirrors the Go sibling `yukino.go/yukino_cache`: APIs,
 
 ```
 packages/cache/
-├── bootstrap.js              # end-to-end demo runner (etcd + 3 nodes + gRPC smoke test)
-├── rollup.config.mjs         # ESM bundle (preserveModules, .mjs) + dts + copies .proto into dist/proto
-├── tsconfig.json             # NodeNext, strict, target/lib ESNext (excludes *.test.ts)
-├── tsconfig.build.json       # build config used by rollup (excludes main.ts and *.test.ts)
-├── package.json              # @yukino.js/cache, type: module, exports ".", "./proto/*.proto"
+├── dev.js                    # demo runner (pnpm dev): etcd + 3 nodes + gRPC set/get smoke test
+├── rollup.config.mjs         # ESM bundle (preserveModules, .mjs) + dts + copies .proto into dist/proto and this skill folder into skills/
+├── tsconfig.json             # NodeNext, strict, target/lib ESNext (no include/exclude; dev.js compiles src+tests with it)
+├── tsconfig.build.json       # build config used by rollup (excludes tests and src/main.ts)
+├── vitest.config.ts          # node env, tests/**/*.test.ts, v8 coverage (excludes src/main.ts, src/proto)
+├── package.json              # @yukino.js/cache, type: module, files [dist, skills, README.md], exports ".", "./proto/*.proto", "./package.json"
 └── src/
     ├── index.ts              # THE export contract; anything not re-exported here is internal
     ├── group.ts              # Group orchestrator, global registry, functional options, stats
@@ -72,7 +73,7 @@ All exports flow through `packages/cache/src/index.ts`. Treat that file as the c
 - `newGroup(name, cacheBytes, getter, ...opts): Group` — preferred factory; also throws `"nil Getter"`. Registers in a package-level `Map<string, Group>`. Re-registration logs `"Group with name ${name} already exists; replacing it"` and replaces the entry WITHOUT closing the old group.
 - `getGroup(name): Group | undefined`, `listGroups(): string[]`, `destroyGroup(name): boolean` (removes then closes; returns `false` if absent), `destroyAllGroups(): void`.
 
-Sentinel errors are module-level `Error` instances (NOT exported); match on `err.message`: `"key is required"`, `"value is required"`, `"cache group is closed"`, `"nil Getter"`, `"RegisterPeers called more than once"`, and loader failures wrapped as `"failed to get data: ${cause}"`.
+Sentinel errors are module-level `Error` instances (NOT exported); match on `err.message`: `"key is required"`, `"value is required"`, `"cache group is closed"`, `"nil Getter"`, `"RegisterPeers called more than once"`, and loader failures wrapped as `"failed to get data: ${err}"` (the stringified loader error).
 
 ### Cache and storage (`cache.ts`, `store.ts`, `lru.ts`)
 
@@ -120,7 +121,7 @@ Sentinel errors are module-level `Error` instances (NOT exported); match on `err
 - `class Client implements Peer` — gRPC stub over `grpc.credentials.createInsecure()` (no TLS client support).
   - `interface ClientOptions { deadlineMs?, peerRequest? }` — `deadlineMs` is the per-call deadline (default `3000` ms); `peerRequest: true` attaches `x-peer-request: "true"` metadata to every outgoing call. Default `peerRequest` is `false`.
   - `constructor(addr: string, opts?: ClientOptions)` builds the `pb.YukinoCache` stub against `addr`.
-  - Errors surface as `Error("failed to get value from yukino_cache: ${grpcMessage}")`, `"failed to set value to yukino_cache: …"`, `"failed to delete value from yukino_cache: …"`.
+  - Errors surface as `Error("failed to get value from yukino_cache: ${err.message}")`, `"failed to set value to yukino_cache: ${err.message}"`, `"failed to delete value from yukino_cache: ${err.message}"`.
   - `getAddr(): string` returns the dialed address; `close()` closes the channel.
 - `class ClientPicker implements PeerPicker`
   - `constructor(addr: string, opts?: PickerOption)` where `interface PickerOption { serviceName?, etcdEndpoints?, peerDeadlineMs? }`. Default service name is `"yukino_cache"`; `etcdEndpoints` overrides discovery endpoints; `peerDeadlineMs` is forwarded to every peer `Client` it creates. Peer clients are always constructed with `peerRequest: true`. The internal ring is a default `ConHashMap` (CRC-32, 50 replicas, no auto-rebalance).
@@ -185,7 +186,7 @@ Honor this order—starting the picker before the server is fine, but never wire
 5. Serve traffic via `group.get/set/delete` or the gRPC service.
 6. Shutdown: `server.stop()` (revokes lease, graceful gRPC shutdown) → `await picker.close()` (ring timer, clients, watcher) → `destroyAllGroups()` (closes caches and their cleanup timers). Each step is independently idempotent.
 
-The reference assembly is `packages/cache/src/main.ts` (flags `-p`/`--port`, default `50051`; binds `0.0.0.0:{port}`, advertises `getLocalIP():{port}` falling back to `127.0.0.1`; group `"user"` with `2 << 10` bytes, service name `"yukino_cache"`). The integration runner `packages/cache/bootstrap.js` reuses a reachable etcd on `127.0.0.1:2379` or forks a local one (`brew install etcd`, data dir `.etcd`), compiles the demo with `tsc` into `.dist/` (separate from Rollup's `dist/`), copies the `.proto` files alongside, bootstraps three nodes (`:8001`–`:8003`), and smoke-tests each with **set-then-get**—pre-seeding the key on a node guarantees the read is a local hit and sidesteps cold-read peer deadlines.
+The reference assembly is `packages/cache/src/main.ts` (flags `-p`/`--port`, default `50051`; binds `0.0.0.0:{port}`, advertises `getLocalIP():{port}` falling back to `127.0.0.1`; group `"user"` with `2 << 10` bytes, service name `"yukino_cache"`). The demo runner `packages/cache/dev.js` (`pnpm --filter @yukino.js/cache run dev`) reuses a reachable etcd on `127.0.0.1:2379` or spawns an `etcd` binary from `PATH` (data dir `.etcd`, log `.etcd/etcd.log`), compiles the demo with `tsc --outDir .dist` using the package `tsconfig.json`, copies the `.proto` files into `.dist/proto/`, spawns three nodes (`:8001`–`:8003`), and smoke-tests each by **set-then-get** through a `Client` (group `"user"`, keys `Alice`/`Bob`/`Yukino`)—pre-seeding the key on a node guarantees the read is a local hit and sidesteps cold-read peer deadlines. Caveat (verified with `tsc --listEmittedFiles`): because `tsconfig.json` sets `rootDir: "./"` with no `include`, `tsc` emits the entry to `.dist/src/main.js` and also compiles `tests/`, while `dev.js` spawns `.dist/main.js` and imports `.dist/client.js`—the runner's paths assume a flattened output and do not match the current emit layout.
 
 ## Operational guidance
 
@@ -193,9 +194,9 @@ The reference assembly is `packages/cache/src/main.ts` (flags `-p`/`--port`, def
 
 **Hot-key fairness.** Ring rebalancing is OFF by default. Enable with `withConHashConfig({ ...defaultConHashConfig, autoRebalance: true })` on a `ConHashMap` you own, or call `rebalance()` manually. Note `ClientPicker` constructs a default ring internally with no configuration hook—custom ring config requires a custom `PeerPicker`. Prefer raising `defaultReplicas` over lowering `loadBalanceThreshold` (low thresholds oscillate).
 
-**Deadlines and cold reads.** Peer RPCs default to 3000 ms, configurable per client (`new Client(addr, { deadlineMs })`) and fleet-wide (`new ClientPicker(addr, { peerDeadlineMs })`). A cold `get` may traverse `Group.load → pickPeer → Client.get → Server.handleGet → Group.get → Getter`; deep hops plus origin latency can exceed the budget. Mitigations: pre-warm hot keys by `set` first (the `bootstrap.js` approach); raise `peerDeadlineMs`; or accept it—the peer failure is swallowed (logged, `peer_misses++`) and the local `Getter` is tried.
+**Deadlines and cold reads.** Peer RPCs default to 3000 ms, configurable per client (`new Client(addr, { deadlineMs })`) and fleet-wide (`new ClientPicker(addr, { peerDeadlineMs })`). A cold `get` may traverse `Group.load → pickPeer → Client.get → Server.handleGet → Group.get → Getter`; deep hops plus origin latency can exceed the budget. Mitigations: pre-warm hot keys by `set` first (the `dev.js` smoke-test approach); raise `peerDeadlineMs`; or accept it—the peer failure is swallowed (logged, `peer_misses++`) and the local `Getter` is tried.
 
-**Error semantics.** Loader failures surface as `Error("failed to get data: ${cause}")`. Peer read failures never propagate to the caller. Fan-out failures inside `syncToPeers` are logged (`"failed to sync ${op} to peer: …"`) but never thrown—writes are deliberately fire-and-forget. If you require write acknowledgement, obtain the peer via `picker.pickPeer(key)` and await `peer.set`/`peer.delete` yourself.
+**Error semantics.** Loader failures surface as `Error("failed to get data: ${err}")`. Peer read failures never propagate to the caller. Fan-out failures inside `syncToPeers` are logged (`"failed to sync ${op} to peer: …"`) but never thrown—writes are deliberately fire-and-forget. If you require write acknowledgement, obtain the peer via `picker.pickPeer(key)` and await `peer.set`/`peer.delete` yourself.
 
 **Closing resources.** Leaks almost always trace to a missed `close`. Live timers/watchers: the `LruStore` cleanup interval, the `ConHashMap` balancer interval (only with `autoRebalance`), the `ServiceDiscovery` watcher, the etcd lease keep-alive inside `register`, and every `Client` channel. `Group.close → Cache.close → LruStore.close` cascades automatically; the picker and server own the rest. In tests, use `try/finally` (or vitest `afterEach`) with `store.close()` / `await picker.close()` / `server.stop()`—the shipped test files demonstrate the pattern.
 
@@ -324,12 +325,12 @@ setLogger({
 
 ## Build, test, and release
 
-- `pnpm --filter @yukino.js/cache run build` — Rollup ESM bundle (`preserveModules`, `.mjs` entries under `dist/`), `dist/index.d.ts` via `rollup-plugin-dts`, and `.proto` copy into `dist/proto/`. `@grpc/grpc-js`, `@grpc/proto-loader`, `etcd3`, and Node built-ins are external.
+- `pnpm --filter @yukino.js/cache run build` — Rollup ESM bundle (`preserveModules`, `.mjs` entries under `dist/`), `dist/index.d.ts` via `rollup-plugin-dts`, `.proto` copy into `dist/proto/`, and this skill folder copied into `skills/`. `@grpc/grpc-js`, `@grpc/proto-loader`, `etcd3`, and Node built-ins are external.
 - `pnpm --filter @yukino.js/cache run test` — Vitest suite (`byte-view`, `cache`, `consistent-hash`, `crc32`, `group`, `lru`, `single-flight`, `utils`).
 - `pnpm --filter @yukino.js/cache run format` — Prettier.
 - `pnpm --filter @yukino.js/cache run clean` — `rm -rf dist`.
-- `node packages/cache/bootstrap.js` — end-to-end smoke test (etcd + three nodes; compiles into `.dist/`).
-- `prepublishOnly` cleans and rebuilds; only `dist/` ships (`package.json#files`).
+- `pnpm --filter @yukino.js/cache run dev` — `node dev.js`, the end-to-end demo runner (etcd + three nodes + gRPC set/get smoke test; compiles into `.dist/`).
+- `prepublishOnly` runs `pnpm clean && pnpm build`; `package.json#files` publishes `dist/`, `skills/` (this skill folder, copied by the build), and `README.md`.
 
 ## Go sibling parity
 

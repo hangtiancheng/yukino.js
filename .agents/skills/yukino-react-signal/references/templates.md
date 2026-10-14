@@ -68,18 +68,18 @@ is CALLED as a function instead: `{renderRow(item)}`.
 
 ## Attribute semantics
 
-| Attribute                        | Behavior                                                                                                 |
-| -------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `class` / `className`            | String, array (falsy entries dropped), or `{ name: boolean }` map — merged                               |
-| `style`                          | String, or camelCase object (kebab-cased; `--x` custom props pass through)                               |
-| `key`                            | Vnode-level sibling compare key (React semantics) — NOT written to the DOM                               |
-| `id`                             | Ordinary attribute (no framework meaning)                                                                |
-| `ref`                            | `(el \| null) => void` callback or `{ current }` cell — called post-commit                               |
-| `disabled={true}`                | Boolean attribute → `disabled=""`; `false`/nullish remove the attribute                                  |
-| `title={sig}`                    | Signal attribute values auto-unwrap (tracked read; updates diff correctly)                               |
-| `value` / `checked` / `selected` | Synced as DOM **properties** on form elements; the template value re-asserts over user edits each render |
-| `data-x={object}`                | NOT supported — objects/functions are skipped with a dev warning                                         |
-| `onClick={fn}`                   | Per-node listener (see components.md) — inline functions only                                            |
+| Attribute                        | Behavior                                                                                                                                                                                                             |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `class` / `className`            | String, array (falsy entries dropped), or `{ name: boolean }` map — merged                                                                                                                                           |
+| `style`                          | String, or camelCase object (kebab-cased; `--x` custom props pass through)                                                                                                                                           |
+| `key`                            | Vnode-level sibling compare key (React semantics) — NOT written to the DOM                                                                                                                                           |
+| `id`                             | Ordinary attribute (no framework meaning)                                                                                                                                                                            |
+| `ref`                            | `(el \| null) => void` callback or `{ current }` cell — called post-commit                                                                                                                                           |
+| `disabled={true}`                | Boolean attribute → `disabled=""`; `false`/nullish remove the attribute — EXCEPT enumerated booleans (`aria-*`, `contenteditable`, `draggable`, `spellcheck`), which serialize `false` as `"false"` and stay present |
+| `title={sig}`                    | Signal attribute values auto-unwrap (tracked read; updates diff correctly)                                                                                                                                           |
+| `value` / `checked` / `selected` | Synced as DOM **properties** on form elements; the template value re-asserts over user edits each render                                                                                                             |
+| `data-x={object}`                | NOT supported — objects/functions are skipped with a dev warning                                                                                                                                                     |
+| `onClick={fn}`                   | Per-node listener (see components.md) — inline functions only                                                                                                                                                        |
 
 Component props are the exception to Signal unwrapping: a Signal passed as a
 component prop stays wrapped so the child can subscribe directly. On

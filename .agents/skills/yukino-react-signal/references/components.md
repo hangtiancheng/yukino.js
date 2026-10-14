@@ -145,8 +145,10 @@ variables directly:
 ```
 
 Multi-event = same fn on several props; modifiers = ordinary checks
-(`if (!(e as MouseEvent).ctrlKey) return;`). Lowercase `onclick` props and
-string handler values are rejected (XSS guard). Window/document listeners:
+(`if (!(e as MouseEvent).ctrlKey) return;`). Lowercase `onclick` props,
+string handler values, and capture-phase props (`onClickCapture`) are
+rejected — for capture-phase use a ref with
+`addEventListener(type, fn, true)`. Window/document listeners:
 `useEffect` + `addEventListener`.
 
 ## Component props, callbacks, children, key

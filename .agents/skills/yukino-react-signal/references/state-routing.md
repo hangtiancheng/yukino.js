@@ -147,8 +147,8 @@ router.dispose(); // detach popstate listener (tests / teardown)
 
 Semantics (from `src/router.ts`):
 
-- ONE `location` signal per instance is the source of truth; `match` /
-  `params` / `searchParams` are computeds. A committed navigation is
+- ONE internal location signal is the source of truth; `location`, `match`,
+  `params`, `searchParams` are computeds over it. A committed navigation is
   exactly one signal write — subscribed instances re-render.
 - **Matching** is ranked react-router style: static segments (+10) >
   dynamic `:param` (+3) > splat `*` (−2); ties resolve in registration
@@ -219,6 +219,7 @@ export default function Pager() {
 }
 ```
 
-Component-only (a real hook — throws outside a component body). `defaults`
-and the router are captured on the FIRST render. Omitting `defaults`
-returns every current search param.
+Component-only (a real hook — throws outside a component body). The
+STABLE setter captures `defaults` and the router from the FIRST render
+(one slot per instance); `params` re-reads `router.searchParams` each
+render. Omitting `defaults` returns every current search param.

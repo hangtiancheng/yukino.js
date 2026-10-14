@@ -121,8 +121,8 @@ the binding (no removeEventListener churn). The proxy wraps handler calls in
 ### Props store (`src/component.ts`)
 
 Per-instance per-key signals behind one stable proxy (`props`). Parent
-pushes batch-write changed values; previously-pushed keys absent this round
-are deleted (child reads `undefined`). `key` never lands in props. Props are
+pushes batch-write changed values; keys it stops passing this round are
+deleted (child reads `undefined`). `key` never lands in props. Props are
 **real in-memory objects end to end** — no wire attributes, no tokens, no
 serialization.
 
