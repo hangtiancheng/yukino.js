@@ -22,23 +22,38 @@ import type { ChildPart } from "lit";
  * - Array values select every matching option (`multiple` selects).
  */
 class SelectValueDirective extends Directive {
-  appliedDefaultValue: unknown;
+  appliedDefaultValue: string[] | undefined;
 
   render(_value?: unknown, _defaultValue?: unknown) {
     return nothing;
   }
 
   update(part: ChildPart, [value, defaultValue]: Parameters<this["render"]>) {
-    const select = part.parentNode;
+    const select = part.parentNode as HTMLSelectElement | null;
     if (!select) return nothing;
     if (value != null) {
-      applySelectValue(select as HTMLSelectElement, value);
-    } else if (
-      defaultValue != null &&
-      defaultValue !== this.appliedDefaultValue
-    ) {
-      this.appliedDefaultValue = defaultValue;
-      applySelectValue(select as HTMLSelectElement, defaultValue);
+      this.appliedDefaultValue = undefined;
+      applySelectValue(select, value);
+    } else if (defaultValue != null) {
+      // Compare a snapshot of the values, not an array literal's identity.
+      const values = (
+        Array.isArray(defaultValue) ? defaultValue : [defaultValue]
+      ).map(String);
+      const previous = this.appliedDefaultValue;
+      if (
+        !previous ||
+        values.length !== previous.length ||
+        values.some((item, index) => item !== previous[index])
+      ) {
+        this.appliedDefaultValue = values;
+        const defaults = new Set(values);
+        for (const option of Array.from(select.options)) {
+          option.defaultSelected = defaults.has(option.value);
+        }
+        applySelectValue(select, defaultValue);
+      }
+    } else {
+      this.appliedDefaultValue = undefined;
     }
     return nothing;
   }

@@ -75,6 +75,54 @@ describe("icon helpers", () => {
     expect(out).toContain('class="lucide w-5"');
     expect(out).toContain('stroke-width="1.5"');
   });
+
+  it("replaces non-lucide root classes without duplicate attributes", () => {
+    const out = icon(
+      "<svg class='other'><path class='lucide-child'/></svg>",
+      "w-4",
+    );
+    const document = new DOMParser().parseFromString(out, "image/svg+xml");
+    expect(document.querySelector("parsererror")).toBeNull();
+    expect(document.documentElement.getAttribute("class")).toBe("lucide w-4");
+    expect(document.querySelector("path")!.getAttribute("class")).toBe(
+      "lucide-child",
+    );
+  });
+
+  it("adds root stroke-width without modifying a child's stroke-width", () => {
+    const out = iconWith('<svg><path stroke-width="1"/></svg>', {
+      strokeWidth: 3,
+    });
+    const document = new DOMParser().parseFromString(out, "image/svg+xml");
+    expect(document.documentElement.getAttribute("stroke-width")).toBe("3");
+    expect(document.querySelector("path")!.getAttribute("stroke-width")).toBe(
+      "1",
+    );
+  });
+
+  it("does not mistake text inside a quoted attribute for an attribute", () => {
+    const out = icon(
+      `<svg aria-label="the class='example' icon" class="old"/>`,
+      "new",
+    );
+    const document = new DOMParser().parseFromString(out, "image/svg+xml");
+    expect(document.documentElement.getAttribute("class")).toBe("lucide new");
+    expect(document.documentElement.getAttribute("aria-label")).toBe(
+      "the class='example' icon",
+    );
+  });
+
+  it("strips comments containing > and escapes class attribute values", () => {
+    const className = 'size-4" data-extra="a&b';
+    const out = icon("<!-- a > b -->\n<svg/>", className);
+    expect(out).not.toContain("<!--");
+    const document = new DOMParser().parseFromString(out, "image/svg+xml");
+    expect(document.querySelector("parsererror")).toBeNull();
+    expect(document.documentElement.getAttribute("class")).toBe(
+      `lucide ${className}`,
+    );
+    expect(document.documentElement.hasAttribute("data-extra")).toBe(false);
+  });
 });
 
 describe("community barrel", () => {

@@ -35,6 +35,39 @@ describe("select value handling", () => {
     expect(selectEl().value).toBe("c");
   });
 
+  it("restores defaultValue when its form resets", () => {
+    render(
+      jsx("form", { children: selectView({ defaultValue: "b" }) }) as never,
+      container,
+    );
+    selectEl().value = "c";
+    container.querySelector("form")!.reset();
+    expect(selectEl().value).toBe("b");
+  });
+
+  it("does not overwrite user selection for equal defaultValue array literals", () => {
+    render(
+      selectView({ multiple: true, defaultValue: ["b"] }) as never,
+      container,
+    );
+    selectEl().options[2].selected = true;
+    render(
+      selectView({ multiple: true, defaultValue: ["b"] }) as never,
+      container,
+    );
+    expect(
+      Array.from(selectEl().selectedOptions, (option) => option.value),
+    ).toEqual(["b", "c"]);
+  });
+
+  it("applies a defaultValue when it reappears", () => {
+    render(selectView({ defaultValue: "b" }) as never, container);
+    render(selectView({}) as never, container);
+    selectEl().value = "c";
+    render(selectView({ defaultValue: "b" }) as never, container);
+    expect(selectEl().value).toBe("b");
+  });
+
   it("prefers value over defaultValue", () => {
     render(selectView({ value: "b", defaultValue: "c" }) as never, container);
     expect(selectEl().value).toBe("b");

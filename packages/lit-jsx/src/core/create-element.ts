@@ -67,7 +67,8 @@ export default function createElement(
  * React treats a `<textarea>`'s text children as its initial value. lit-html
  * cannot render child expressions inside `<textarea>` (the HTML parser treats
  * everything there as raw text), so text children are forwarded through the
- * `value` property instead. Explicit `value`/`defaultValue` props win.
+ * `defaultValue` property instead, preserving user edits and form reset.
+ * Explicit `value`/`defaultValue` props win.
  */
 function withTextChildrenAsValue(
   children: unknown,
@@ -75,7 +76,7 @@ function withTextChildrenAsValue(
 ) {
   if (props.value != null || props.defaultValue != null) return props;
   const text = childrenAsText(children);
-  return text === undefined ? props : { ...props, value: text };
+  return text === undefined ? props : { ...props, defaultValue: text };
 }
 
 function childrenAsText(children: unknown): string | undefined {

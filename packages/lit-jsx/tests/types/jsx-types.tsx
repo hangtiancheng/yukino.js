@@ -6,6 +6,7 @@
  */
 import { LitElement } from "../../src/index";
 import { property } from "../../src/decorators";
+import { Outlet } from "../../src/community/router";
 
 // ---------------------------------------------------------------------------
 // B2: a custom element's own `onXxx` callback property must not be intersected
@@ -118,6 +119,8 @@ const Greeting = ({ name }: { name: string }) => <div>hi {name}</div>;
 
 export const general = (
   <>
+    <Outlet />
+    <Outlet depth={1} />
     <Greeting name="ada" />
     <div
       class="a"
@@ -134,3 +137,6 @@ export const general = (
     <my-unregistered-thing anything={1} />
   </>
 );
+
+// @ts-expect-error -- Outlet depth is numeric
+export const invalidOutlet = <Outlet depth="1" />;

@@ -88,10 +88,10 @@ Prop handling follows React conventions where it makes sense and Lit/web-platfor
 - `onXxx` props become real DOM event listeners on native tags (`onClick` → `click`, plus the full modern event surface — `onWheel`, `onTouchEnd`, composition, animation, transition events, etc.). Both React-style camelCase names (`onKeyDown`, `onDoubleClick`, `onTransitionEnd`, …) and the direct DOM spellings (`onKeydown`, `onDblclick`, …) are bound at runtime **and** typed.
 - `onXxx` props on **your own custom elements** are not auto-bound: they are forwarded as properties, so the element decides what a prop named `onClick` means. The usual web-components pattern applies — dispatch a bubbling `CustomEvent` and listen for it on the parent. If your element declares its own `onXxx` callback property, that declared type wins over the native event-handler typing (no more uncallable intersections).
 - `className` (or `class`) sets the class, `style` takes a camelCase style object (Lit's `styleMap`), and `ref` accepts Lit's ref objects or callbacks.
-- Hyphenated props (`data-*`, `aria-*`, …) become attributes; everything else is assigned as a DOM property — even when `undefined`, so reactive properties reset like you'd expect in Lit.
+- Hyphenated props (`data-*`, `aria-*`, …) on native tags become attributes; everything else is assigned as a DOM property. Nullish values are omitted, and previously assigned props are cleaned up when removed or made nullish.
 - `value` / `defaultValue` accept numbers (and string arrays) like React's types do; string-valued DOM properties are coerced on assignment.
-- `<select value={x}>` and `<select defaultValue={x}>` work as in React: the value is applied **after** the `<option>` children commit (assigning `.value` before any option exists is silently ignored by the browser, which then falls back to the first option). `value` is re-applied on every render (controlled); `defaultValue` is applied when it first appears or changes but never overrides a newer user selection (uncontrolled); array values select every matching option for `multiple` selects.
-- `<textarea>{"initial text"}</textarea>` forwards text children as the initial value (React semantics), unless an explicit `value`/`defaultValue` prop is given. Non-text children are dropped — lit-html cannot render child expressions inside `<textarea>` (raw-text parsing).
+- `<select value={x}>` and `<select defaultValue={x}>` apply their value **after** the `<option>` children commit. `value` is re-applied on every render (controlled); `defaultValue` is applied when it appears or its contents change, preserving user selection on unrelated renders, including equivalent array literals (uncontrolled). Array values select every matching option for `multiple` selects. Defaults are restored by `form.reset()`.
+- `<textarea>{"initial text"}</textarea>` forwards text children through `defaultValue`, unless an explicit `value`/`defaultValue` prop is given. User edits survive subsequent child updates, and `form.reset()` restores the latest default. Non-text children are dropped — lit-html cannot render child expressions inside `<textarea>` (raw-text parsing).
 - `false`, `null` and `undefined` children render nothing, just like React (`{cond && <div />}` is safe).
 - `key` is accepted for React familiarity but unused — Lit's diffing has no key semantics.
 
@@ -178,9 +178,13 @@ createRoot(document.getElementById("app")!).render(<route-view />);
 
 Route configs support `path`/`index` segments, `:params`, `*` catch-alls, nested `children` rendered through `<route-outlet>`, redirects (`{ path: "old", to: "/new" }`), and per-leaf `loader`/`action` functions. Leaf elements receive `{ params, loaderData, actionData, navigation }` as props.
 
+Routes without elements group their children without consuming an outlet level. `<Outlet />` and `<route-outlet>` infer the next rendered level, including inside Shadow DOM layouts; `<Outlet depth={1} />` and `Outlet(1)` explicitly render level 2. Parent paths also match without an index child. Redirect cycles stop with no matched content.
+
 Components: `<route-view>` (renders the matched route chain), `<route-outlet>` (renders the next level), `Link`, `NavLink` (active-state className, `aria-current`), `Form` (submits to the route action), `Outlet(depth?)`, and `Fetcher` for out-of-band submissions.
 
 Hooks (all read from the shared router instance): `useParams`, `useLocation`, `useNavigate`, `useNavigation`, `useLoaderData`, `useActionData`, `useSearchParams`, `useMatch`, `useOutletContext`.
+
+`<Form method="get">` navigates with serialized search parameters; other methods invoke the matched action and then re-run its loader. Form data includes the clicked submit button. Action requests retain the current query string. Results from superseded navigation or submissions cannot overwrite the current route; `router.stop()` also invalidates pending results.
 
 The underlying `Router` class takes a swappable `LocationAdapter` (`HashLocation` / `HistoryLocation` are provided, custom strategies work too); `router.mode` reports the active one, and `router.stop()` detaches the URL listener.
 

@@ -81,9 +81,9 @@ function splitTo(to: string): { path: string; search: string } {
 
 function joinPath(parent: string, child: string): string {
   if (child === "*") return `${parent === "/" ? "" : parent}/*`;
+  if (child.startsWith("/")) return normalizePath(child);
   const base = parent === "/" ? "" : parent;
-  const seg = child.startsWith("/") ? child : `/${child}`;
-  return normalizePath(`${base}${seg}`);
+  return normalizePath(`${base}/${child}`);
 }
 
 function rankPattern(pattern: string): number[] {
@@ -104,13 +104,18 @@ export function flatten(
     const isRedirect = config.to !== undefined;
     const isWrapper = !!config.children?.length;
 
-    if (!isWrapper || isRedirect) {
+    if (
+      !isWrapper ||
+      isRedirect ||
+      config.path !== undefined ||
+      config.element
+    ) {
       const fullPath = config.index
         ? normalizePath(parent || "/")
         : joinPath(parent, config.path ?? "");
       out.push({
         fullPath,
-        isCatchAll: config.path === "*",
+        isCatchAll: fullPath.endsWith("/*"),
         chain: currentChain,
         leaf: config,
         rank: rankPattern(fullPath),
@@ -130,22 +135,23 @@ export function matchSegments(
   pattern: string,
   path: string,
 ): Record<string, string> | null {
-  if (pattern.endsWith("/*")) {
-    const prefix = pattern.slice(0, -2);
-    if (prefix === "" || path === prefix || path.startsWith(`${prefix}/`)) {
-      return { "*": path.slice(prefix.length).replace(/^\//, "") };
-    }
-    return null;
-  }
   const patternParts = pattern.split("/").filter(Boolean);
   const pathParts = path.split("/").filter(Boolean);
-  if (patternParts.length !== pathParts.length) return null;
+  const hasSplat = patternParts.at(-1) === "*";
+  if (
+    hasSplat
+      ? pathParts.length < patternParts.length - 1
+      : patternParts.length !== pathParts.length
+  )
+    return null;
   const params: Record<string, string> = {};
   for (let i = 0; i < patternParts.length; i++) {
     const pp = patternParts[i];
     const tp = pathParts[i];
-    if (pp.startsWith(":")) {
-      params[pp.slice(1)] = decodeURIComponent(tp);
+    if (pp === "*" && hasSplat && i === patternParts.length - 1) {
+      params["*"] = pathParts.slice(i).map(decodeSegment).join("/");
+    } else if (pp.startsWith(":")) {
+      params[pp.slice(1)] = decodeSegment(tp);
     } else if (pp !== tp) {
       return null;
     }
@@ -153,16 +159,25 @@ export function matchSegments(
   return params;
 }
 
+function decodeSegment(segment: string): string {
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return segment;
+  }
+}
+
 function compareRank(a: FlatRoute, b: FlatRoute): number {
-  if (a.isCatchAll !== b.isCatchAll) return a.isCatchAll ? -1 : 1;
   const len = Math.max(a.rank.length, b.rank.length);
   for (let i = 0; i < len; i++) {
-    const av = a.rank[i] ?? -1;
-    const bv = b.rank[i] ?? -1;
+    // An exact match beats an empty splat, while static/param segments
+    // continue to rank above a splat at the same position.
+    const av = a.rank[i] ?? 1;
+    const bv = b.rank[i] ?? 1;
     if (av !== bv) return av - bv;
   }
   if (a.rank.length !== b.rank.length) return a.rank.length - b.rank.length;
-  return 0;
+  return Number(!!a.leaf.index) - Number(!!b.leaf.index);
 }
 
 export function bestMatch(
@@ -330,15 +345,18 @@ export class Router {
    */
   use(adapter: LocationAdapter): this {
     if (adapter === this.adapter) return this;
+    ++this.resolveToken;
     this.adapter = adapter;
     if (this.started) {
       this.unlisten?.();
       this.unlisten = adapter.listen(() => void this.resolve(this.getPath()));
+      void this.resolve(this.getPath());
     }
     return this;
   }
 
   configure(routes: RouteConfig[]): this {
+    ++this.resolveToken;
     this.flat = flatten(routes);
     if (this.started) void this.resolve(this.getPath());
     return this;
@@ -356,9 +374,11 @@ export class Router {
 
   /** Detach the URL listener (re-`start()` to resume). */
   stop(): this {
+    ++this.resolveToken;
     this.unlisten?.();
     this.unlisten = undefined;
     this.started = false;
+    this.navigation = idleNavigation;
     return this;
   }
 
@@ -399,10 +419,35 @@ export class Router {
   }
 
   private async resolve(rawPath: string): Promise<void> {
-    const path = normalizePath(rawPath);
-    this.currentPath = path;
+    let path = normalizePath(rawPath);
     const token = ++this.resolveToken;
-    const found = bestMatch(this.flat, path);
+    let found = bestMatch(this.flat, path);
+    const visited = new Set([`${path}?${this.getSearch()}`]);
+    const redirects: { path: string; search: string; replace: boolean }[] = [];
+    // Resolve redirect chains before writing the URL. A cycle must not
+    // recurse or keep scheduling hashchange events forever.
+    while (found?.route.leaf.to !== undefined) {
+      const leaf = found.route.leaf;
+      const target = splitTo(leaf.to!);
+      const key = `${target.path}?${target.search}`;
+      if (visited.has(key)) {
+        found = null;
+        redirects.length = 0;
+        break;
+      }
+      visited.add(key);
+      redirects.push({ ...target, replace: leaf.replace !== false });
+      path = target.path;
+      found = bestMatch(this.flat, path);
+    }
+    this.currentPath = normalizePath(rawPath);
+    for (const redirect of redirects) {
+      const fired = redirect.replace
+        ? this.adapter.replace(redirect.path, redirect.search)
+        : this.adapter.push(redirect.path, redirect.search);
+      if (fired) return;
+      this.currentPath = redirect.path;
+    }
     if (!found) {
       this.match = null;
       this.loaderData = undefined;
@@ -414,19 +459,18 @@ export class Router {
     const { route, params } = found;
     const leaf = route.leaf;
 
-    if (leaf.to !== undefined) {
-      this.navigate(leaf.to, { replace: leaf.replace !== false });
-      return;
-    }
-
     this.match = { chain: route.chain, params, leaf };
+    this.loaderData = undefined;
+    this.actionData = undefined;
 
     if (leaf.loader) {
+      const args = this.loaderArgs(params);
       this.navigation = { state: "loading" };
       this.invalidate();
+      if (token !== this.resolveToken) return;
       let data: unknown;
       try {
-        data = await leaf.loader(this.loaderArgs(params));
+        data = await leaf.loader(args);
       } catch (error) {
         data = {
           error: error instanceof Error ? error.message : String(error),
@@ -446,6 +490,9 @@ export class Router {
   }
 
   navigate(to: string, opts: { replace?: boolean } = {}): void {
+    // Invalidate pending work immediately, including the interval before
+    // hashchange fires for hash navigation.
+    ++this.resolveToken;
     const { path, search } = splitTo(to);
     const fired = opts.replace
       ? this.adapter.replace(path, search)
@@ -457,16 +504,28 @@ export class Router {
     formData: FormData,
     opts: { method?: string } = {},
   ): Promise<unknown> {
+    const method = (opts.method ?? "post").toUpperCase();
+    if (method === "GET") {
+      const search = new URLSearchParams();
+      for (const [name, value] of formData) {
+        search.append(name, typeof value === "string" ? value : value.name);
+      }
+      this.navigate(`${this.currentPath}?${search}`);
+      return undefined;
+    }
     const leaf = this.match?.leaf;
     const action = leaf?.action;
     if (!leaf || !action) return undefined;
     const params = this.getParams();
-    const request = new Request(this.adapter.requestUrl(this.currentPath), {
-      method: (opts.method ?? "post").toUpperCase(),
-      body: formData,
+    const args = this.loaderArgs(params);
+    const request = new Request(args.request.url, {
+      method,
+      ...(method === "HEAD" ? {} : { body: formData }),
     });
+    const token = ++this.resolveToken;
     this.navigation = { state: "submitting" };
     this.invalidate();
+    if (token !== this.resolveToken) return undefined;
     let actionData: unknown;
     try {
       actionData = await action({ request, formData, params });
@@ -476,17 +535,22 @@ export class Router {
         message: error instanceof Error ? error.message : String(error),
       };
     }
+    if (token !== this.resolveToken) return actionData;
     this.actionData = actionData;
     if (leaf.loader) {
       this.navigation = { state: "loading" };
       this.invalidate();
+      if (token !== this.resolveToken) return actionData;
+      let data: unknown;
       try {
-        this.loaderData = await leaf.loader(this.loaderArgs(params));
+        data = await leaf.loader(args);
       } catch (error) {
-        this.loaderData = {
+        data = {
           error: error instanceof Error ? error.message : String(error),
         };
       }
+      if (token !== this.resolveToken) return actionData;
+      this.loaderData = data;
     }
     this.navigation = idleNavigation;
     this.invalidate();
@@ -514,17 +578,12 @@ export class Router {
   }
 
   render(): unknown {
-    if (!this.match) return null;
-    const first = this.match.chain[0];
-    if (!first.element) return null;
-    if (first === this.match.leaf) return this.renderLeaf();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return jsx(first.element as any, {});
+    return this.renderAt(0);
   }
 
   renderAt(index: number): unknown {
     if (!this.match) return null;
-    const config = this.match.chain[index];
+    const config = this.match.chain.filter((route) => route.element)[index];
     if (!config?.element) return null;
     if (config === this.match.leaf) return this.renderLeaf();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -553,18 +612,12 @@ export const router = new Router(hashLocation);
 
 /** Route from the URL hash (`#/path`); works on any static host. */
 export function createHashRouter(routes: RouteConfig[]): Router {
-  router.use(hashLocation);
-  router.configure(routes);
-  router.start();
-  return router;
+  return router.stop().use(hashLocation).configure(routes).start();
 }
 
 /** Route from the real pathname (`/path`) via the History API. */
 export function createBrowserRouter(routes: RouteConfig[]): Router {
-  router.use(historyLocation);
-  router.configure(routes);
-  router.start();
-  return router;
+  return router.stop().use(historyLocation).configure(routes).start();
 }
 
 /** Alias of `createBrowserRouter`. */
@@ -652,6 +705,7 @@ export class RoutedElement extends LitElement {
     super.connectedCallback();
     this.style.display = "block";
     this.unsubscribe = router.onChange(() => this.requestUpdate());
+    this.requestUpdate();
   }
 
   override disconnectedCallback(): void {
@@ -660,14 +714,16 @@ export class RoutedElement extends LitElement {
   }
 }
 
-export function Outlet(depth = 0): unknown {
-  return html`<route-outlet depth=${depth}></route-outlet>`;
+export function Outlet(props: number | { depth?: number } = {}): unknown {
+  const depth = typeof props === "number" ? props : props.depth;
+  return html`<route-outlet .depth=${depth}></route-outlet>`;
 }
 
 export class Fetcher<T = unknown> {
   state: NavigationState = "idle";
   data: T | undefined = undefined;
   private readonly notify: () => void;
+  private submitToken = 0;
 
   constructor(notify: () => void) {
     this.notify = notify;
@@ -677,11 +733,15 @@ export class Fetcher<T = unknown> {
     formData: FormData,
     opts: { method?: string } = {},
   ): Promise<void> {
+    const token = ++this.submitToken;
     this.state = "submitting";
     this.notify();
     try {
-      this.data = (await router.runAction(formData, opts)) as T;
+      const data = (await router.runAction(formData, opts)) as T;
+      if (token !== this.submitToken) return;
+      this.data = data;
     } catch (error) {
+      if (token !== this.submitToken) return;
       this.data = {
         ok: false,
         message: error instanceof Error ? error.message : String(error),
@@ -745,9 +805,7 @@ export function NavLink(props: {
   const current = router.state.path;
   const isActive =
     target === "/"
-      ? end
-        ? current === "/"
-        : true
+      ? current === "/"
       : current === target || (!end && current.startsWith(`${target}/`));
   const cls =
     typeof className === "function" ? className({ isActive }) : className;
@@ -776,7 +834,7 @@ export function Form(props: {
     onSubmit: (event: SubmitEvent) => {
       event.preventDefault();
       const form = event.currentTarget as HTMLFormElement;
-      const formData = new FormData(form);
+      const formData = new FormData(form, event.submitter);
       if (onSubmit) {
         onSubmit(formData, method);
       } else {
@@ -796,10 +854,28 @@ export class RouteView extends RoutedElement {
 
 @customElement("route-outlet")
 export class RouteOutlet extends RoutedElement {
-  @property({ type: Number }) depth = 0;
+  @property({ type: Number }) depth?: number;
+
+  private get outletDepth(): number {
+    if (this.depth != null) return this.depth;
+    // Walk through layout elements and their shadow roots to find the
+    // outlet that rendered this layout.
+    for (
+      let parent: Node | null = this.parentNode;
+      parent;
+      parent = parent instanceof ShadowRoot ? parent.host : parent.parentNode
+    ) {
+      if (parent instanceof RouteOutlet) return parent.outletDepth + 1;
+      if (parent instanceof RouteView) break;
+    }
+    return 0;
+  }
 
   protected override render(): unknown {
-    return router.renderAt(this.depth + 1) ?? nothing;
+    const depth = this.outletDepth;
+    return Number.isInteger(depth) && depth >= 0
+      ? (router.renderAt(depth + 1) ?? nothing)
+      : nothing;
   }
 }
 

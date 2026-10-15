@@ -91,9 +91,9 @@ Babel (`babel.config.js`):
 }
 ```
 
-Inside this package, the main `tsconfig.json` sets no `jsx` option (src is
-plain `.ts`); only `tests/types/tsconfig.json` enables
-`"jsx": "react-jsx"` with `"jsxImportSource": "../../src"`.
+Inside this package, the main `tsconfig.json` enables `"jsx": "react-jsx"`
+with self-reference paths to `src`. `tests/types/tsconfig.json` uses
+`"jsxImportSource": "../../src"` for the type fixtures.
 
 ## How a JSX tree becomes DOM
 
@@ -174,11 +174,15 @@ Core behaviors (differences from React to keep in mind):
   re-applied on every render (controlled — a user change without a state
   update snaps back); `defaultValue` is applied when it first appears or
   changes, never on unrelated re-renders (uncontrolled — user selection
-  survives); array values select every matching option (`multiple`) and
-  scalars are coerced with `String(value)`. Nullish value props set nothing.
+  survives, including equivalent array literals); defaults are compared by
+  contents and are applied again after removal/reappearance. Default options
+  receive `defaultSelected` so `form.reset()` restores them. Array values
+  select every matching option (`multiple`) and scalars are coerced with
+  `String(value)`. Nullish value props set nothing.
   The `<option selected={...}>` pattern also works and needs no value prop.
 - `<textarea>{"text"}</textarea>` forwards text children (string/number,
-  joined; nullish/boolean skipped) as the initial `value` — React semantics.
+  joined; nullish/boolean skipped) through `defaultValue`, preserving user
+  edits when the children change and restoring the latest default on reset.
   Explicit non-null `value`/`defaultValue` props win; children containing
   anything non-text are dropped (lit-html cannot render child expressions
   inside raw-text elements). `<template>` children are dropped the same way.
@@ -314,8 +318,10 @@ from it. Two location strategies share one core:
 
 Both configure + start the singleton and return it; calling one after the
 other switches modes at runtime. `router.mode` reports `"hash" | "history"`,
-`router.stop()` detaches the URL listener, `router.use(adapter)` swaps the
-strategy directly (re-subscribing when started).
+`router.stop()` detaches the URL listener and invalidates pending results;
+`router.use(adapter)` swaps the strategy directly (re-subscribing and
+resolving the new location when started). Factory calls stop/reconfigure/start
+atomically so old routes cannot redirect the new mode before configuration.
 
 The strategy is a `LocationAdapter` (`getPath`/`getSearch`/`createHref`/
 `requestUrl`/`listen`/`push`/`replace`); `HashLocation` and `HistoryLocation`
@@ -331,7 +337,21 @@ flat routes; `bestMatch` prefers static > param > catch-all. Leaf elements
 receive `{ params, loaderData, actionData, navigation }` props; `loader` runs
 on match (navigation state `"loading"`), `action` runs via `router.submit`,
 `<Form>` or `Fetcher` (state `"submitting"`, then the loader re-runs). Stale
-loader results are dropped via a resolve token.
+loader and action results are dropped via an operation token, including
+action-triggered loader revalidation and the interval before hashchange.
+Action requests retain the query string. GET form submissions navigate with
+serialized search parameters; form data includes the clicked submitter.
+Fetcher ignores older results from overlapping submissions on the same instance.
+Redirect chains are checked for cycles before URL writes; cycles render no
+matched content instead of recursing or endlessly emitting hashchange.
+
+Matching supports params before splats and tolerates malformed URL escapes.
+Parent routes match without requiring an index child; an index child wins
+ties at its parent path. Absolute child paths are not prefixed a second time.
+Element-less route groups do not consume a rendered outlet level.
+`<Outlet />` and `<route-outlet>` infer depth through parent outlets, crossing
+Shadow DOM boundaries; `<Outlet depth={1} />` and `Outlet(1)` explicitly render
+level 2. Reconnected routed elements request an update to refresh stale content.
 
 Hooks: `useParams`, `useLocation`, `useNavigate`, `useNavigation`,
 `useLoaderData`, `useActionData`, `useSearchParams` (setter navigates),
@@ -360,9 +380,10 @@ TS 6). The lit logo arrives via `import litSvg from "../assets/lit.svg?raw"`.
 
 ### Icon helpers (src/community/icon.ts)
 
-`icon(svg, className?)` strips comments/newlines and swaps the `lucide`
-class; `iconWith(svg, { className, strokeWidth })` also overrides
-stroke-width.
+`icon(svg, className?)` strips comments/newlines and replaces/adds the root
+SVG class with `lucide ${className}` (escaping attribute values).
+`iconWith(svg, { className, strokeWidth })` also replaces/adds root
+stroke-width without changing child attributes or creating duplicate attributes.
 
 ### ?raw imports
 

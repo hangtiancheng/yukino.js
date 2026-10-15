@@ -265,6 +265,21 @@ describe("createElement content-restricted tags", () => {
     expect(textarea.value).toBe("edited");
   });
 
+  it("uses textarea children as a resettable default without overwriting edits", () => {
+    const view = (children: string) =>
+      jsx("form", {
+        children: jsx("textarea", { children }),
+      });
+    render(view("initial") as never, container);
+    const textarea = container.querySelector("textarea")!;
+    expect(textarea.defaultValue).toBe("initial");
+    textarea.value = "edited";
+    render(view("new default") as never, container);
+    expect(textarea.value).toBe("edited");
+    container.querySelector("form")!.reset();
+    expect(textarea.value).toBe("new default");
+  });
+
   it("renders template without a child expression (no throw)", () => {
     expect(() => render(jsx("template", {}) as never, container)).not.toThrow();
     expect(container.querySelector("template")).toBeTruthy();
