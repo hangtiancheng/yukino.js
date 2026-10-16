@@ -1,5 +1,5 @@
 import * as grpc from "@grpc/grpc-js";
-import { proto } from "./proto/index.js";
+import { getProto } from "./proto/index.js";
 import { Peer } from "./peers.js";
 
 export interface ClientOptions {
@@ -19,7 +19,7 @@ export class Client implements Peer {
     this.addr = addr;
     this.deadlineMs = opts?.deadlineMs ?? DEFAULT_DEADLINE_MS;
     this.peerRequest = opts?.peerRequest ?? false;
-    this.grpcClient = new proto.pb.YukinoCache(
+    this.grpcClient = new (getProto().pb.YukinoCache)(
       addr,
       grpc.credentials.createInsecure(),
     );

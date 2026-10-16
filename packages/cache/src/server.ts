@@ -1,6 +1,6 @@
 import * as grpc from "@grpc/grpc-js";
 import { readFileSync } from "fs";
-import { proto, healthProto } from "./proto/index.js";
+import { getHealthProto, getProto } from "./proto/index.js";
 import { getGroup } from "./group.js";
 import { register } from "./register.js";
 import { log } from "./logger.js";
@@ -64,7 +64,7 @@ export class Server {
     }
 
     this.grpcServer = new grpc.Server(serverOpts);
-    this.grpcServer.addService(proto.pb.YukinoCache.service, {
+    this.grpcServer.addService(getProto().pb.YukinoCache.service, {
       Get: this.handleGet.bind(this),
       Set: this.handleSet.bind(this),
       Delete: this.handleDelete.bind(this),
@@ -72,7 +72,7 @@ export class Server {
 
     const servingStatuses = new Map<string, number>();
     servingStatuses.set(svcName, 1);
-    this.grpcServer.addService(healthProto.grpc.health.v1.Health.service, {
+    this.grpcServer.addService(getHealthProto().grpc.health.v1.Health.service, {
       Check: (
         call: grpc.ServerUnaryCall<any, any>,
         callback: grpc.sendUnaryData<any>,

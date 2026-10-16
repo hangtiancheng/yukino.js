@@ -1,6 +1,6 @@
 {
   "name": "@yukino.js/cache",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Distributed cache library aligned with yukino.go/yukino_cache",
   "keywords": [
     "cache",
@@ -28,6 +28,7 @@
     "README.md"
   ],
   "type": "module",
+  "sideEffects": false,
   "main": "dist/index.mjs",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
