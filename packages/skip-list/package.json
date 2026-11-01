@@ -1,0 +1,36 @@
+{
+  "name": "@yukino.js/skip-list",
+  "version": "0.0.0",
+  "description": "A Redis-style skip list (sorted set) implementation in TypeScript",
+  "keywords": [
+    "skip-list",
+    "skiplist",
+    "sorted-set",
+    "redis",
+    "data-structure",
+    "rank"
+  ],
+  "license": "MIT",
+  "author": "hangtiancheng",
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.11"
+  }
+}

@@ -25,6 +25,7 @@ Some packages also ship **agent skills** (`.agents/skills/`), machine-readable r
 | [`@yukino.js/cache`](./packages/cache)                       | Distributed read-through cache — a TypeScript port of [groupcache](https://github.com/golang/groupcache) with gRPC peer fan-out, etcd discovery, consistent hashing, single-flight deduplication, and a sharded two-level LRU. | Node.js ≥ 20 · ESM   |
 | [`@yukino.js/anti-copy`](./packages/anti-copy)               | Framework-agnostic copy-protection SDK for browsers — clipboard interception, shortcut blocking, print hiding, DevTools detection & countermeasures, region exemptions. Integrations for React, Vue, and VitePress.            | Browser              |
 | [`@yukino.js/bloom-filter`](./packages/bloom-filter)         | Standard Bloom filter with xxHash32 — configurable bit-array size, hash count, seed, and false-positive rate.                                                                                                                  | Node.js · ESM        |
+| [`@yukino.js/skip-list`](./packages/skip-list)               | Redis-style skip list (sorted set) — score/member ordering, span-based rank queries, score ranges, and reverse iteration.                                                                                                      | Node.js · ESM        |
 | [`@yukino.js/distributed-lock`](./packages/distributed-lock) | Redis-based distributed lock with Lua-scripted atomic acquire/release and owner verification.                                                                                                                                  | Node.js · ESM        |
 | [`@yukino.js/hooks`](./packages/hooks)                       | React hooks — `useCreation`, `useLatest`, `useMemoizedFn`, `useRequest`, `useUpdate`, `useUrlState`.                                                                                                                           | Browser · React ≥ 18 |
 | [`@yukino.js/promises-a-plus`](./packages/promises-a-plus)   | Promises/A+ spec implementation, validated against the official `promises-aplus-tests` suite.                                                                                                                                  | Node.js ≥ 22         |
@@ -75,7 +76,8 @@ yukino.js/
 │   ├── cache/              # Distributed cache (groupcache port)
 │   ├── distributed-lock/   # Redis distributed lock
 │   ├── hooks/              # React hooks
-│   └── promises-a-plus/    # Promises/A+ implementation
+│   ├── promises-a-plus/    # Promises/A+ implementation
+│   └── skip-list/          # Redis-style skip list
 ├── .agents/skills/         # Agent skill definitions
 ├── public/                 # Logo assets
 └── pnpm-workspace.yaml
