@@ -1,9 +1,8 @@
 {
-  "name": "@yukino.js/skip-list",
+  "name": "@yukino.js/skiplist",
   "version": "0.0.0",
-  "description": "A Redis-style skip list (sorted set) implementation in TypeScript",
+  "description": "A Redis-style skiplist (sorted set) implementation in TypeScript",
   "keywords": [
-    "skip-list",
     "skiplist",
     "sorted-set",
     "redis",

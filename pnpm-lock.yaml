@@ -481,7 +481,7 @@ importers:
         specifier: ^8.71.1
         version: 8.71.1(eslint@10.12.0(jiti@2.7.0)(supports-color@1.2.0))(supports-color@1.2.0)(typescript@5.9.3)
 
-  packages/skip-list:
+  packages/skiplist:
     devDependencies:
       '@types/node':
         specifier: ^24.19.2

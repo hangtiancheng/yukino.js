@@ -1,6 +1,6 @@
-# @yukino.js/skip-list
+# @yukino.js/skiplist
 
-A **Redis-style skip list** in TypeScript — an ordered set of `(member, score)`
+A **Redis-style skiplist** in TypeScript — an ordered set of `(member, score)`
 pairs with `O(log n)` insertion, deletion, rank lookup, and range queries.
 
 The implementation follows Redis's `t_zset.c`: 32 levels by default, a level-up
@@ -8,7 +8,7 @@ probability of `0.25`, per-level **span** counters for `O(log n)` rank lookups,
 backward pointers for reverse iteration, and a member → node dictionary for
 `O(1)` score lookups.
 
-[![npm](https://img.shields.io/npm/v/@yukino.js/skip-list?label=npm&color=F05138)](https://www.npmjs.com/package/@yukino.js/skip-list)
+[![npm](https://img.shields.io/npm/v/@yukino.js/skiplist?label=npm&color=F05138)](https://www.npmjs.com/package/@yukino.js/skiplist)
 [![License: MIT](https://img.shields.io/badge/License-MIT-f5a623.svg)](../../LICENSE)
 
 ## Properties
@@ -23,13 +23,13 @@ backward pointers for reverse iteration, and a member → node dictionary for
 ## Installation
 
 ```sh
-pnpm add @yukino.js/skip-list
+pnpm add @yukino.js/skiplist
 ```
 
 ## Usage
 
 ```ts
-import { SkipList } from "@yukino.js/skip-list";
+import { SkipList } from "@yukino.js/skiplist";
 
 const zset = new SkipList();
 
