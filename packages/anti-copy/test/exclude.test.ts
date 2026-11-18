@@ -76,6 +76,15 @@ describe("isEditable", () => {
     expect(isEditable(document.getElementById("f"))).toBe(false);
   });
 
+  it("honors the nearest contenteditable boundary", () => {
+    document.body.innerHTML =
+      "<div contenteditable='true'><div contenteditable='FALSE'><span id='blocked'>x</span>" +
+      "<div contenteditable='true' id='nested'>y</div><input id='input'></div></div>";
+    expect(isEditable(document.getElementById("blocked"))).toBe(false);
+    expect(isEditable(document.getElementById("nested"))).toBe(true);
+    expect(isEditable(document.getElementById("input"))).toBe(true);
+  });
+
   it("recognizes inputs inside open shadow roots", () => {
     document.body.innerHTML = "<div id='host'></div>";
     const root = document

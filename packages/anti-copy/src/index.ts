@@ -58,6 +58,12 @@ function mergeOptions(
   ) {
     merged.devtools = { ...current.devtools, ...patch.devtools };
   }
+  if (merged.excludeSelectors) {
+    merged.excludeSelectors = [...merged.excludeSelectors];
+  }
+  if (typeof merged.devtools === "object") {
+    merged.devtools = { ...merged.devtools };
+  }
   return merged;
 }
 
@@ -66,42 +72,47 @@ export function createAntiCopy(
 ): AntiCopyInstance {
   if (!isBrowser()) return NOOP_INSTANCE;
 
-  let currentOptions = { ...options };
+  let currentOptions = mergeOptions({}, options);
   let features = buildFeatures(currentOptions);
+  let attached: Feature[] = [];
   let enabled = false;
   let destroyed = false;
 
   const instance: AntiCopyInstance = {
     enable() {
       if (destroyed || enabled) return;
-      const attached: Feature[] = [];
+      // Retry any cleanup left behind by an earlier failed transition.
+      instance.disable();
       try {
         for (const feature of features) {
           attached.push(feature);
           feature.attach();
         }
       } catch (error) {
-        for (const feature of attached) {
-          try {
-            feature.detach();
-          } catch {}
-        }
+        try {
+          instance.disable();
+        } catch {}
         throw error;
       }
       enabled = true;
     },
     disable() {
-      if (!enabled) return;
+      enabled = false;
+      if (attached.length === 0) return;
+      const pending = attached;
+      attached = [];
       let firstError: unknown;
-      for (const feature of features) {
+      let failed = false;
+      for (const feature of pending) {
         try {
           feature.detach();
         } catch (error) {
-          firstError ??= error;
+          attached.push(feature);
+          if (!failed) firstError = error;
+          failed = true;
         }
       }
-      enabled = false;
-      if (firstError !== undefined) throw firstError;
+      if (failed) throw firstError;
     },
     destroy() {
       instance.disable();
@@ -111,11 +122,25 @@ export function createAntiCopy(
     isEnabled: () => enabled,
     update(patch) {
       if (destroyed) return;
+      const nextOptions = mergeOptions(currentOptions, patch);
+      const nextFeatures = buildFeatures(nextOptions);
       const wasEnabled = enabled;
       instance.disable();
-      currentOptions = mergeOptions(currentOptions, patch);
-      features = buildFeatures(currentOptions);
-      if (wasEnabled) instance.enable();
+      const previousOptions = currentOptions;
+      const previousFeatures = features;
+      currentOptions = nextOptions;
+      features = nextFeatures;
+      try {
+        if (wasEnabled) instance.enable();
+      } catch (error) {
+        currentOptions = previousOptions;
+        features = previousFeatures;
+        // Preserve the update error even if restoring the old target also fails.
+        try {
+          instance.enable();
+        } catch {}
+        throw error;
+      }
     },
   };
 

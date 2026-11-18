@@ -140,12 +140,14 @@ describe("devtools detector", () => {
 
   it("update deep-merges nested devtools options", () => {
     const onViolation = vi.fn();
+    const config = { intervalMs: 100, threshold: 400, freeze: false };
     instance = createAntiCopy({
       ...REPORT_ONLY,
-      devtools: { intervalMs: 100, threshold: 400, freeze: false },
+      devtools: config,
       onViolation,
     });
     instance.enable();
+    config.threshold = 100;
     instance.update({ devtools: { intervalMs: 50 } });
     setWindowMetrics(1200, 900);
     vi.advanceTimersByTime(500);
@@ -158,6 +160,54 @@ describe("devtools detector", () => {
 });
 
 describe("devtools countermeasures", () => {
+  it.each(["disable", "destroy", "update"] as const)(
+    "does not restart loops after %s in onViolation",
+    (action) => {
+      const fake = createFakeWindow();
+      instance = createAntiCopy({
+        ...REPORT_ONLY,
+        target: fakeTarget(fake.view),
+        devtools: { intervalMs: 100 },
+        onViolation: () => {
+          if (action === "update") instance?.update({ devtools: false });
+          else instance?.[action]();
+        },
+      });
+      instance.enable();
+      fake.openDevtools();
+      fake.probePausesFor(500);
+      vi.advanceTimersByTime(100);
+      expect(instance.isEnabled()).toBe(action === "update");
+      expect(vi.getTimerCount()).toBe(0);
+      fake.probePausesFor(0);
+      vi.advanceTimersByTime(1000);
+      expect(fake.hrefSets).toEqual([]);
+    },
+  );
+
+  it("ignores an old poll after the callback disables and re-enables protection", () => {
+    const fake = createFakeWindow();
+    const onViolation = vi.fn().mockImplementationOnce(() => {
+      instance?.disable();
+      instance?.enable();
+    });
+    instance = createAntiCopy({
+      ...REPORT_ONLY,
+      target: fakeTarget(fake.view),
+      devtools: { intervalMs: 100 },
+      onViolation,
+    });
+    instance.enable();
+    fake.openDevtools();
+    fake.probePausesFor(500);
+    vi.advanceTimersByTime(100);
+    fake.probePausesFor(0);
+    vi.advanceTimersByTime(1000);
+    expect(instance.isEnabled()).toBe(true);
+    expect(vi.getTimerCount()).toBe(1);
+    expect(fake.hrefSets).toEqual([]);
+  });
+
   it("stalls through the debugger probe and never redirects while it pauses", () => {
     const fake = createFakeWindow();
     const onViolation = vi.fn();

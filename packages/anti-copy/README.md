@@ -12,7 +12,7 @@ any browser project.
 - Intercepts `copy` / `cut` / `dragstart` events (capture phase, on `window`)
 - Blocks copy shortcuts by both the layout character (`e.key`) and the
   physical key (`e.code`), so non-Latin and remapped keyboard layouts cannot
-  bypass: `Ctrl/Cmd + C/X/A`, `Ctrl+Insert`, and DevTools / view-source
+  bypass: `Ctrl/Cmd + C/X/A`, `Ctrl+Insert`, `Shift+Delete`, and DevTools / view-source
   shortcuts (`F12`, `Ctrl+Shift+I/J/C`, `Cmd+Opt+I/J/C`, `Ctrl+U`,
   `Cmd+Opt+U`)
 - Blocks export shortcuts (`Ctrl/Cmd + S/P`) and hides content in print
@@ -54,6 +54,10 @@ antiCopy.enable();
 Call `enable()` after mount and `disable()` / `destroy()` on teardown; toggle
 per view yourself. The package root is the only entry point.
 
+If detaching a feature throws, cleanup still attempts the other features and
+rethrows the first error. Calling `disable()` or `destroy()` again retries any
+unfinished cleanup.
+
 ### Options
 
 | Option             | Default    | Description                                                                        |
@@ -75,6 +79,14 @@ Violation types: `copy`, `cut`, `drag`, `selection`, `keyboard`,
 
 `update(patch)` deep-merges the nested `devtools` object; other fields
 (including arrays like `excludeSelectors`) are replaced wholesale.
+Arrays and DevTools configuration objects are copied on creation and update;
+use `update()` to apply subsequent changes. If attaching an update fails, the
+instance attempts to restore the previous configuration and enabled state,
+then rethrows the update error.
+
+Copy and cut shortcuts use the same whole-selection exclusions as clipboard
+events. `contenteditable="false"` stops the inherited editable exemption;
+text inputs and nested editable hosts retain their native behavior.
 
 ### DevTools protection
 
@@ -96,6 +108,11 @@ Violation types: `copy`, `cut`, `drag`, `selection`, `keyboard`,
 
 Detections triggered by the size heuristic alone (browser zoom, unusual
 window chrome) are **report-only**: they never freeze or redirect the page.
+
+`intervalMs` must be finite and between 1 and 2,147,483,647; `threshold` must
+be finite and non-negative. Invalid values fall back to 1000 ms and 170,
+respectively. Disabling, destroying, or updating the instance inside
+`onViolation` stops the previous detector from starting further guard loops.
 
 ## Known limitations
 

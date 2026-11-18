@@ -30,6 +30,8 @@ export function createDevtoolsFeature(options: ResolvedOptions): Feature {
   let lastOpened = false;
   let bypassTicks = 0;
   let redirected = false;
+  let active = false;
+  let generation = 0;
 
   const clock = (): number => {
     const perf = view.performance;
@@ -56,7 +58,7 @@ export function createDevtoolsFeature(options: ResolvedOptions): Feature {
   };
 
   const startPoll = () => {
-    if (pollTimer === null && guardTimer === null) {
+    if (active && pollTimer === null && guardTimer === null) {
       pollTimer = setInterval(pollTick, config.intervalMs);
     }
   };
@@ -83,7 +85,8 @@ export function createDevtoolsFeature(options: ResolvedOptions): Feature {
   };
 
   const guardTick = () => {
-    if (redirected) return;
+    if (!active || redirected) return;
+    const currentGeneration = generation;
     const paused = runProbe() > PAUSE_THRESHOLD_MS;
     if (!paused && !sizeOpen()) {
       stopLoops();
@@ -95,6 +98,7 @@ export function createDevtoolsFeature(options: ResolvedOptions): Feature {
       lastOpened = true;
       options.onViolation?.({ type: "devtools" });
     }
+    if (!active || generation !== currentGeneration) return;
     if (paused) {
       bypassTicks = 0;
       return;
@@ -106,7 +110,8 @@ export function createDevtoolsFeature(options: ResolvedOptions): Feature {
   };
 
   const pollTick = () => {
-    if (redirected || guardTimer !== null) return;
+    if (!active || redirected || guardTimer !== null) return;
+    const currentGeneration = generation;
     const paused = runProbe() > PAUSE_THRESHOLD_MS;
     if (!paused && !sizeOpen()) {
       lastOpened = false;
@@ -116,6 +121,7 @@ export function createDevtoolsFeature(options: ResolvedOptions): Feature {
       lastOpened = true;
       options.onViolation?.({ type: "devtools" });
     }
+    if (!active || generation !== currentGeneration) return;
     if (paused) {
       stopLoops();
       bypassTicks = 0;
@@ -125,11 +131,15 @@ export function createDevtoolsFeature(options: ResolvedOptions): Feature {
 
   return {
     attach() {
-      if (pollTimer !== null || guardTimer !== null) return;
+      if (active) return;
+      active = true;
+      generation += 1;
       view.addEventListener("resize", pollTick);
       startPoll();
     },
     detach() {
+      active = false;
+      generation += 1;
       view.removeEventListener("resize", pollTick);
       stopLoops();
       lastOpened = false;

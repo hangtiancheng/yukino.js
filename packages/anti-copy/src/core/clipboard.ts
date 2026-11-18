@@ -20,6 +20,8 @@ export function createClipboardFeature(options: ResolvedOptions): Feature {
       isExcluded(el, options.excludeSelectors);
     if (exempt) return;
 
+    // Cancel before user code or clipboard APIs can throw.
+    event.preventDefault();
     if (options.mode === "replace" && event.clipboardData) {
       const selection = doc.defaultView?.getSelection()?.toString() ?? "";
       const text =
@@ -29,7 +31,6 @@ export function createClipboardFeature(options: ResolvedOptions): Feature {
       event.clipboardData.setData("text/plain", text);
       event.clipboardData.setData("text/html", escapeHtml(text));
     }
-    event.preventDefault();
     options.onViolation?.({
       type: event.type === "cut" ? "cut" : "copy",
       originalEvent: event,

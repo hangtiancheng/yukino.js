@@ -11,9 +11,20 @@ function resolveDevtools(
 ): ResolvedOptions["devtools"] {
   if (!options.devtools) return false;
   const config = options.devtools === true ? {} : options.devtools;
+  // Browsers turn overflowing/invalid timer delays into a hot loop.
+  const intervalMs = config.intervalMs ?? DEFAULT_DEVTOOLS_INTERVAL_MS;
+  const threshold = config.threshold ?? DEFAULT_DEVTOOLS_THRESHOLD;
   return {
-    intervalMs: config.intervalMs ?? DEFAULT_DEVTOOLS_INTERVAL_MS,
-    threshold: config.threshold ?? DEFAULT_DEVTOOLS_THRESHOLD,
+    intervalMs:
+      Number.isFinite(intervalMs) &&
+      intervalMs >= 1 &&
+      intervalMs <= 2_147_483_647
+        ? intervalMs
+        : DEFAULT_DEVTOOLS_INTERVAL_MS,
+    threshold:
+      Number.isFinite(threshold) && threshold >= 0
+        ? threshold
+        : DEFAULT_DEVTOOLS_THRESHOLD,
     freeze: config.freeze ?? true,
     redirectUrl: config.redirectUrl ?? DEFAULT_DEVTOOLS_REDIRECT_URL,
   };

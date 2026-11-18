@@ -7,6 +7,7 @@ afterEach(() => {
   instance?.destroy();
   instance = null;
   document.body.innerHTML = "";
+  window.getSelection()?.removeAllRanges();
 });
 
 function fireKey(
@@ -70,6 +71,49 @@ describe("keyboard", () => {
     instance.enable();
     expect(fireKey({ key: "Insert", ctrlKey: true }).defaultPrevented).toBe(
       true,
+    );
+  });
+
+  it.each(["block", "replace"] as const)(
+    "blocks Shift+Delete independently of clipboard interception in %s mode",
+    (mode) => {
+      const onViolation = vi.fn();
+      instance = createAntiCopy({
+        mode,
+        copy: false,
+        selectStyle: false,
+        onViolation,
+      });
+      instance.enable();
+      expect(fireKey({ key: "Delete", shiftKey: true }).defaultPrevented).toBe(
+        true,
+      );
+      expect(fireKey({ code: "Delete", shiftKey: true }).defaultPrevented).toBe(
+        true,
+      );
+      expect(fireKey({ key: "Delete" }).defaultPrevented).toBe(false);
+      expect(onViolation).toHaveBeenCalledWith(
+        expect.objectContaining({ key: "Shift+Delete" }),
+      );
+      document.body.innerHTML = "<input>";
+      expect(
+        fireKey(
+          { key: "Delete", shiftKey: true },
+          document.querySelector("input")!,
+        ).defaultPrevented,
+      ).toBe(false);
+    },
+  );
+
+  it("matches the physical Insert key for copy shortcuts", () => {
+    instance = createAntiCopy({ selectStyle: false });
+    instance.enable();
+    expect(fireKey({ code: "Insert", ctrlKey: true }).defaultPrevented).toBe(
+      true,
+    );
+    instance.update({ mode: "replace" });
+    expect(fireKey({ code: "Insert", ctrlKey: true }).defaultPrevented).toBe(
+      false,
     );
   });
 
@@ -147,6 +191,29 @@ describe("keyboard", () => {
     expect(fireKey({ key: "a", ctrlKey: true }, input).defaultPrevented).toBe(
       false,
     );
+  });
+
+  it("uses the whole selection for copy exclusions before the clipboard event", () => {
+    document.body.innerHTML = '<p class="allowed">allowed</p><p>protected</p>';
+    instance = createAntiCopy({
+      selectStyle: false,
+      excludeSelectors: [".allowed"],
+    });
+    instance.enable();
+    const range = document.createRange();
+    range.selectNodeContents(document.querySelector(".allowed")!);
+    window.getSelection()?.addRange(range);
+    expect(fireKey({ key: "c", ctrlKey: true }).defaultPrevented).toBe(false);
+    expect(fireKey({ key: "Insert", ctrlKey: true }).defaultPrevented).toBe(
+      false,
+    );
+    range.selectNodeContents(document.body);
+    expect(
+      fireKey({ key: "c", ctrlKey: true }, document.querySelector(".allowed")!)
+        .defaultPrevented,
+    ).toBe(true);
+    // Select-all remains scoped to the focused element, not the previous selection.
+    expect(fireKey({ key: "a", ctrlKey: true }).defaultPrevented).toBe(true);
   });
 
   it("ignores plain keys without modifiers", () => {

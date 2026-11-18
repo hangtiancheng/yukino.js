@@ -1,5 +1,10 @@
 import type { Feature, ResolvedOptions } from "./types";
-import { eventElement, isEditable, isExcluded } from "./utils";
+import {
+  eventElement,
+  isEditable,
+  isExcluded,
+  isSelectionExcluded,
+} from "./utils";
 
 const COPY_KEYS = new Set(["c", "x", "a"]);
 const EXPORT_KEYS = new Set(["s", "p"]);
@@ -49,17 +54,29 @@ export function createKeyboardFeature(options: ResolvedOptions): Feature {
 
     if (event.altKey) return;
 
-    if (!(event.ctrlKey || event.metaKey)) return;
+    const isDeleteCut =
+      event.shiftKey &&
+      !event.ctrlKey &&
+      !event.metaKey &&
+      (event.key === "Delete" || event.code === "Delete");
+    if (!(event.ctrlKey || event.metaKey || isDeleteCut)) return;
     const copyKey = matchKey(event, COPY_KEYS);
     const isInsertCopy =
-      event.ctrlKey && !event.shiftKey && event.key === "Insert";
+      event.ctrlKey &&
+      !event.shiftKey &&
+      (event.key === "Insert" || event.code === "Insert");
     const exportKey = options.print ? matchKey(event, EXPORT_KEYS) : null;
-    if (!copyKey && !isInsertCopy && !exportKey) return;
+    if (!copyKey && !isInsertCopy && !isDeleteCut && !exportKey) return;
 
     if (!exportKey) {
       const el = eventElement(event);
       if (isEditable(el)) return;
-      if (isExcluded(el, options.excludeSelectors)) return;
+      const exempt =
+        copyKey === "a"
+          ? isExcluded(el, options.excludeSelectors)
+          : (isSelectionExcluded(doc, options.excludeSelectors) ??
+            isExcluded(el, options.excludeSelectors));
+      if (exempt) return;
       if (options.mode === "replace" && (copyKey === "c" || isInsertCopy)) {
         return;
       }
@@ -72,7 +89,9 @@ export function createKeyboardFeature(options: ResolvedOptions): Feature {
     options.onViolation?.({
       type: "keyboard",
       originalEvent: event,
-      key: `${event.metaKey ? "Cmd" : "Ctrl"}+${label}`,
+      key: isDeleteCut
+        ? "Shift+Delete"
+        : `${event.metaKey ? "Cmd" : "Ctrl"}+${label}`,
     });
   };
 

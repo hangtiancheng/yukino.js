@@ -31,6 +31,31 @@ function stubSelection(text: string, container?: Node) {
 }
 
 describe("clipboard", () => {
+  it.each(["replaceText", "setData"])(
+    "cancels copy even when %s throws",
+    (source) => {
+      const failure = new Error("replacement failed");
+      const fail = () => {
+        throw failure;
+      };
+      const spy = vi.spyOn(window, "addEventListener");
+      instance = createAntiCopy({
+        mode: "replace",
+        replaceText: source === "replaceText" ? fail : "notice",
+      });
+      instance.enable();
+      const handler = spy.mock.calls.find(([type]) => type === "copy")?.[1];
+      if (typeof handler !== "function")
+        throw new Error("Missing copy listener");
+      const event = new Event("copy", { cancelable: true });
+      Object.defineProperty(event, "clipboardData", {
+        value: { setData: source === "setData" ? fail : vi.fn() },
+      });
+      expect(() => handler.call(window, event)).toThrow(failure);
+      expect(event.defaultPrevented).toBe(true);
+    },
+  );
+
   it("block mode prevents the copy", () => {
     instance = createAntiCopy({ selectStyle: false });
     instance.enable();

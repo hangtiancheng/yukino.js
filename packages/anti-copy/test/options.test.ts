@@ -31,6 +31,33 @@ describe("resolveOptions", () => {
     });
   });
 
+  it.each([0, -1, NaN, Infinity, 2_147_483_648])(
+    "normalizes unsafe polling interval %s",
+    (intervalMs) => {
+      expect(
+        resolveOptions({ devtools: { intervalMs } }).devtools,
+      ).toMatchObject({ intervalMs: 1000 });
+    },
+  );
+
+  it.each([-1, NaN, Infinity])(
+    "normalizes invalid threshold %s",
+    (threshold) => {
+      expect(
+        resolveOptions({ devtools: { threshold } }).devtools,
+      ).toMatchObject({ threshold: 170 });
+    },
+  );
+
+  it("preserves zero threshold and the supported interval boundaries", () => {
+    expect(
+      resolveOptions({ devtools: { intervalMs: 1, threshold: 0 } }).devtools,
+    ).toMatchObject({ intervalMs: 1, threshold: 0 });
+    expect(
+      resolveOptions({ devtools: { intervalMs: 2_147_483_647 } }).devtools,
+    ).toMatchObject({ intervalMs: 2_147_483_647 });
+  });
+
   it("backfills partial devtools objects", () => {
     expect(resolveOptions({ devtools: { threshold: 300 } }).devtools).toEqual({
       intervalMs: 1000,

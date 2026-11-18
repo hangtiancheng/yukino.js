@@ -64,6 +64,7 @@ export function isEditable(target: EventTarget | null): boolean {
       if (!NON_TEXT_INPUT_TYPES.has(type)) return true;
     }
     const attr = el.getAttribute("contenteditable");
+    if (attr?.toLowerCase() === "false") return false;
     if (attr !== null && EDITABLE_VALUES.has(attr.toLowerCase())) return true;
     el = el.parentElement ?? shadowHost(el);
   }
