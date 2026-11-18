@@ -188,10 +188,6 @@ Hooks (all read from the shared router instance): `useParams`, `useLocation`, `u
 
 The underlying `Router` class takes a swappable `LocationAdapter` (`HashLocation` / `HistoryLocation` are provided, custom strategies work too); `router.mode` reports the active one, and `router.stop()` detaches the URL listener.
 
-### PoweredByLit badge
-
-`PoweredByLit` renders a floating "Powered by Lit + @yukino.js/lit-jsx" badge with the lit logo. It is styled entirely with inline styles (lit-jsx's `style` prop → Lit `styleMap`) — no Tailwind or other CSS framework needed; the `powered-by-lit` / `powered-by-lit-badge` class names are stable hooks for overrides.
-
 ### Icon helpers
 
 `icon(svg, className)` and `iconWith(svg, { className, strokeWidth })` normalize lucide-style SVG strings (strip comments, collapse whitespace) and re-class / re-stroke them for inline use.

@@ -1,8 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { html, render } from "lit";
-import type { TemplateResult } from "lit";
 import litSvg from "@/assets/lit.svg?raw";
-import { PoweredByLit } from "@/community/powered-by";
 import { icon, iconWith } from "@/community/icon";
 import * as community from "@/community";
 
@@ -23,39 +21,6 @@ describe("?raw imports", () => {
     expect(typeof litSvg).toBe("string");
     expect(litSvg).toContain("<svg");
     expect(litSvg).toContain('viewBox="0 0 256 320"');
-  });
-});
-
-describe("PoweredByLit", () => {
-  it("renders the resized lit logo and label", () => {
-    render(html`${PoweredByLit() as TemplateResult}`, container);
-    const svg = container.querySelector("svg");
-    expect(svg).toBeTruthy();
-    expect(svg!.getAttribute("width")).toBe("13");
-    expect(svg!.getAttribute("height")).toBe("16");
-    expect(container.textContent).toContain("Powered by Lit");
-    expect(container.textContent).toContain("@yukino.js/lit-jsx");
-  });
-
-  it("styles itself without any CSS framework", () => {
-    render(html`${PoweredByLit() as TemplateResult}`, container);
-    const outer = container.querySelector<HTMLElement>(".powered-by-lit")!;
-    expect(outer.style.position).toBe("fixed");
-    expect(outer.style.bottom).toBe("12px");
-    expect(outer.style.right).toBe("12px");
-    expect(outer.style.zIndex).toBe("50");
-    expect(outer.style.pointerEvents).toBe("none");
-
-    const badge = container.querySelector<HTMLElement>(
-      ".powered-by-lit-badge",
-    )!;
-    expect(badge.style.display).toBe("flex");
-    expect(badge.style.alignItems).toBe("center");
-    expect(badge.style.borderRadius).toBe("9999px");
-    expect(badge.style.pointerEvents).toBe("auto");
-
-    const mono = badge.querySelectorAll("span")[1] as HTMLElement;
-    expect(mono.style.fontFamily).toContain("monospace");
   });
 });
 
@@ -126,13 +91,12 @@ describe("icon helpers", () => {
 });
 
 describe("community barrel", () => {
-  it("re-exports router, icon and powered-by surfaces", () => {
+  it("re-exports router and icon surfaces", () => {
     expect(typeof community.createHashRouter).toBe("function");
     expect(typeof community.createBrowserRouter).toBe("function");
     expect(community.createHistoryRouter).toBe(community.createBrowserRouter);
     expect(typeof community.Link).toBe("function");
     expect(typeof community.icon).toBe("function");
-    expect(typeof community.PoweredByLit).toBe("function");
     expect(community.router.mode).toMatch(/^(hash|history)$/);
   });
 });

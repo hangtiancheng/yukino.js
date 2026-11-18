@@ -3,7 +3,7 @@ name: yukino-lit-jsx
 description: >-
   Use when implementing, debugging, or reviewing @yukino.js/lit-jsx or
   packages/lit-jsx: Lit JSX runtime and types, DOM prop handling, custom
-  elements, registry overrides, community router, SVG helpers, and badge.
+  elements, registry overrides, community router, and SVG helpers.
 ---
 
 # @yukino.js/lit-jsx
@@ -18,7 +18,7 @@ below are relative to `packages/lit-jsx/`.
 | `@yukino.js/lit-jsx`                 | `src/index.ts`: Lit exports, `createRoot`, registry functions, decorators, directives, and types |
 | `@yukino.js/lit-jsx/jsx-runtime`     | `src/jsx-runtime.ts`: `jsx`, `jsxs`, `jsxDEV`, `Fragment`, and JSX types                         |
 | `@yukino.js/lit-jsx/jsx-dev-runtime` | Maps to the same files as `jsx-runtime`                                                          |
-| `@yukino.js/lit-jsx/community`       | `src/community/index.ts`: router, icon helpers, and `PoweredByLit`                               |
+| `@yukino.js/lit-jsx/community`       | `src/community/index.ts`: router and icon helpers                                                |
 
 All entries have ESM, CJS, and declaration outputs. The root does not export
 `jsx`, `Fragment`, or `createElement`. `literal` and `unsafeStatic` are imported
@@ -76,7 +76,7 @@ it again for the same active container warns and returns the existing root.
 that root. A later render on that root throws; the container can be used for
 a new root.
 
-## Community SVG and badge utilities
+## Community SVG utilities
 
 `icon(svg, className?)` removes comments, collapses whitespace, and, for a
 truthy className, sets the first SVG opening tag's class to
@@ -85,10 +85,6 @@ truthy className, sets the first SVG opening tag's class to
 provided. Attribute replacement is scoped to that opening tag, parses quoted
 values, and escapes inserted values; child attributes remain untouched.
 These functions return strings and do not sanitize SVG content.
-
-`PoweredByLit()` returns a fixed-position badge styled through `styleMap`.
-It reads `src/assets/lit.svg?raw`, inserts the logo with `unsafeHTML`, and
-sets logo dimensions to 13 by 16. No CSS framework is needed by the component.
 
 ## Toolchain and verification
 
