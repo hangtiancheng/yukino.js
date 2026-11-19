@@ -12,18 +12,16 @@
   },
   "type": "module",
   "scripts": {
-    "format": "concurrently \"pnpm --filter @yukino.js/anti-copy format\" \"pnpm --filter @yukino.js/cache format\" \"pnpm --filter @yukino.js/lit-jsx format\" \"pnpm --filter @yukino.js/react format\" \"pnpm --filter @yukino.js/react-signal format\"",
     "git:config": "git config user.name hangtiancheng && git config user.email '161043261@qq.com'",
     "git:commit": "git add -A && git commit -m \"feat: Introduce new features\"",
     "git:push": "pnpm git:commit && git push origin main",
     "prepare": "husky",
-    "http:build": "pnpm --filter @yukino.js/create-servers --filter @yukino.js/http-proxy --filter @yukino.js/http-server --filter @yukino.js/port-finder --filter @yukino.js/registry-mock build",
-    "http:test": "pnpm --filter @yukino.js/create-servers --filter @yukino.js/http-proxy --filter @yukino.js/http-server --filter @yukino.js/port-finder --filter @yukino.js/registry-mock test",
-    "http:typecheck": "pnpm --filter @yukino.js/create-servers --filter @yukino.js/http-proxy --filter @yukino.js/http-server --filter @yukino.js/port-finder --filter @yukino.js/registry-mock typecheck",
-    "http:lint": "pnpm --filter @yukino.js/create-servers --filter @yukino.js/http-proxy --filter @yukino.js/http-server --filter @yukino.js/port-finder --filter @yukino.js/registry-mock lint",
-    "http:format": "pnpm --filter @yukino.js/create-servers --filter @yukino.js/http-proxy --filter @yukino.js/http-server --filter @yukino.js/port-finder --filter @yukino.js/registry-mock format",
-    "http:format:check": "pnpm --filter @yukino.js/create-servers --filter @yukino.js/http-proxy --filter @yukino.js/http-server --filter @yukino.js/port-finder --filter @yukino.js/registry-mock format:check"
-  },
+    "build": "pnpm -r --if-present build",
+    "format": "pnpm -r --if-present format",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "lint": "pnpm -r --if-present lint",
+    "lint:fix": "pnpm -r --if-present lint:fix"
+    },
   "devDependencies": {
     "concurrently": "^9.2.5",
     "husky": "^9.1.7",

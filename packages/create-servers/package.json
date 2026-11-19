@@ -31,9 +31,8 @@
     "build": "rolldown -c && tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "lint": "eslint .",
-    "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "lint": "eslint . --fix",
+    "format": "prettier -w . --experimental-cli"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
