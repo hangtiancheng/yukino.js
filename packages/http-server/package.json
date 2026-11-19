@@ -1,0 +1,61 @@
+{
+  "name": "@yukino.js/http-server",
+  "version": "0.0.0",
+  "description": "Static HTTP server and command-line file server",
+  "type": "module",
+  "license": "MIT",
+  "author": "hangtiancheng",
+  "engines": {
+    "node": ">=24"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "NOTICE.md",
+    "LICENSE.upstream"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hangtiancheng/yukino.js.git",
+    "directory": "packages/http-server"
+  },
+  "scripts": {
+    "build": "rolldown -c && tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/mime-types": "^3.0.1",
+    "@types/node": "^24.19.2",
+    "eslint": "^10.15.0",
+    "prettier": "^3.10.1",
+    "rolldown": "^1.3.3",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.73.0",
+    "vitest": "^4.1.12"
+  },
+  "dependencies": {
+    "@yukino.js/http-proxy": "workspace:*",
+    "@yukino.js/port-finder": "workspace:*",
+    "mime-types": "^3.0.2",
+    "minimatch": "^10.2.6"
+  },
+  "bin": {
+    "http-server": "./dist/cli.js"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

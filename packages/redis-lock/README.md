@@ -1,28 +1,28 @@
-# @yukino.js/distributed-lock
+# @yukino.js/redis-lock
 
 A **Redis-based distributed lock** for TypeScript — atomic acquire/release via
 Lua scripts, with retries + jittered backoff, an optional renewal watchdog, and
 fencing tokens to defend against stale writes.
 
-[![npm](https://img.shields.io/npm/v/@yukino.js/distributed-lock?label=npm&color=F05138)](https://www.npmjs.com/package/@yukino.js/distributed-lock)
+[![npm](https://img.shields.io/npm/v/@yukino.js/redis-lock?label=npm&color=F05138)](https://www.npmjs.com/package/@yukino.js/redis-lock)
 [![License: MIT](https://img.shields.io/badge/License-MIT-f5a623.svg)](../../LICENSE)
 
 ## Installation
 
 ```sh
-pnpm add @yukino.js/distributed-lock redis
+pnpm add @yukino.js/redis-lock redis
 ```
 
 ## Usage
 
 ```ts
 import { createClient } from "redis";
-import { DistributedLock } from "@yukino.js/distributed-lock";
+import { RedisLock } from "@yukino.js/redis-lock";
 
 const redis = createClient();
 await redis.connect();
 
-const lock = new DistributedLock(redis);
+const lock = new RedisLock(redis);
 
 const handle = await lock.acquire({
   key: "lock:order:123",
@@ -58,7 +58,7 @@ try {
 
 ## API
 
-### `new DistributedLock(redis)`
+### `new RedisLock(redis)`
 
 Wraps a connected `RedisClientType` from the `redis` package.
 

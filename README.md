@@ -25,10 +25,17 @@ Some packages also ship **agent skills** (`.agents/skills/`), machine-readable r
 | [`@yukino.js/cache`](./packages/cache)                       | Distributed read-through cache — a TypeScript port of [groupcache](https://github.com/golang/groupcache) with gRPC peer fan-out, etcd discovery, consistent hashing, single-flight deduplication, and a sharded two-level LRU. | Node.js ≥ 20 · ESM   |
 | [`@yukino.js/anti-copy`](./packages/anti-copy)               | Framework-agnostic copy-protection SDK for browsers — clipboard interception, shortcut blocking, print hiding, DevTools detection & countermeasures, region exemptions. Integrations for React, Vue, and VitePress.            | Browser              |
 | [`@yukino.js/bloom-filter`](./packages/bloom-filter)         | Standard Bloom filter with xxHash32 — configurable bit-array size, hash count, seed, and false-positive rate.                                                                                                                  | Node.js · ESM        |
-| [`@yukino.js/skiplist`](./packages/skiplist)               | Redis-style skiplist (sorted set) — score/member ordering, span-based rank queries, score ranges, and reverse iteration.                                                                                                      | Node.js · ESM        |
-| [`@yukino.js/distributed-lock`](./packages/distributed-lock) | Redis-based distributed lock with Lua-scripted atomic acquire/release and owner verification.                                                                                                                                  | Node.js · ESM        |
+| [`@yukino.js/skiplist`](./packages/skiplist)                 | Redis-style skiplist (sorted set) — score/member ordering, span-based rank queries, score ranges, and reverse iteration.                                                                                                       | Node.js · ESM        |
+| [`@yukino.js/redis-lock`](./packages/redis-lock)             | Redis-based distributed lock with Lua-scripted atomic acquire/release and owner verification.                                                                                                                                  | Node.js · ESM        |
 | [`@yukino.js/hooks`](./packages/hooks)                       | React hooks — `useCreation`, `useLatest`, `useMemoizedFn`, `useRequest`, `useUpdate`, `useUrlState`.                                                                                                                           | Browser · React ≥ 18 |
 | [`@yukino.js/promises-a-plus`](./packages/promises-a-plus)   | Promises/A+ spec implementation, validated against the official `promises-aplus-tests` suite.                                                                                                                                  | Node.js ≥ 22         |
+| [`@yukino.js/create-servers`](./packages/create-servers)     | Shared HTTP, HTTPS and HTTP/2 listener factory.                                                                                                                                                                                | Node.js ≥ 24 · ESM   |
+| [`@yukino.js/http-proxy`](./packages/http-proxy)             | Streaming HTTP(S) and WebSocket reverse proxy.                                                                                                                                                                                 | Node.js ≥ 24 · ESM   |
+| [`@yukino.js/http-server`](./packages/http-server)           | Static file server and CLI with caching, ranges, TLS and proxying.                                                                                                                                                             | Node.js ≥ 24 · ESM   |
+| [`@yukino.js/port-finder`](./packages/port-finder)           | Available TCP ports and unused Unix socket paths.                                                                                                                                                                              | Node.js ≥ 24 · ESM   |
+| [`@yukino.js/registry-mock`](./packages/registry-mock)       | Caching mock npm registry and publish attachment server.                                                                                                                                                                       | Node.js ≥ 24 · ESM   |
+
+The HTTP package family uses TypeScript, Rolldown, Vitest, ESLint and Prettier. Build all five with `pnpm http:build`, then run `pnpm http:test`, `pnpm http:typecheck`, `pnpm http:lint` and `pnpm http:format:check`.
 
 ## Agent Skills
 
@@ -74,7 +81,7 @@ yukino.js/
 │   ├── anti-copy/          # Browser copy-protection SDK
 │   ├── bloom-filter/       # Bloom filter (xxHash32)
 │   ├── cache/              # Distributed cache (groupcache port)
-│   ├── distributed-lock/   # Redis distributed lock
+│   ├── redis-lock/         # Redis distributed lock
 │   ├── hooks/              # React hooks
 │   ├── promises-a-plus/    # Promises/A+ implementation
 │   └── skiplist/          # Redis-style skiplist

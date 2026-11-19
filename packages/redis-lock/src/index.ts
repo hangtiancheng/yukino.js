@@ -161,7 +161,7 @@ interface RenewalEntry {
   ownerId: string;
 }
 
-export class DistributedLock {
+export class RedisLock {
   private readonly redis: RedisClientType;
 
   private readonly renewalTimers = new Map<string, RenewalEntry>();

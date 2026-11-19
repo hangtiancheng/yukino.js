@@ -1,14 +1,14 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach } from "vitest";
 import { createClient, type RedisClientType } from "redis";
 import {
-  DistributedLock,
+  RedisLock,
   DEFAULTS,
   type LockHandle,
   type LostInfo,
 } from "../src/index.js";
 import crypto from "node:crypto";
 
-const TEST_PREFIX = "test:distributed-lock:";
+const TEST_PREFIX = "test:redis-lock:";
 let keySeq = 0;
 
 function uniqueKey(): string {
@@ -23,16 +23,16 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-describe("DistributedLock", () => {
+describe("RedisLock", () => {
   let redis: RedisClientType;
-  let lock: DistributedLock;
+  let lock: RedisLock;
 
   const activeHandles: LockHandle[] = [];
 
   beforeAll(async () => {
     redis = createClient();
     await redis.connect();
-    lock = new DistributedLock(redis);
+    lock = new RedisLock(redis);
   });
 
   afterEach(async () => {
@@ -50,7 +50,7 @@ describe("DistributedLock", () => {
   });
 
   async function acquireTracked(
-    ...args: Parameters<DistributedLock["acquire"]>
+    ...args: Parameters<RedisLock["acquire"]>
   ): Promise<LockHandle | null> {
     const handle = await lock.acquire(...args);
     if (handle) activeHandles.push(handle);
