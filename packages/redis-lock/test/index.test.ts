@@ -1,513 +1,284 @@
-import { describe, it, expect, beforeAll, afterAll, afterEach } from "vitest";
-import { createClient, type RedisClientType } from "redis";
+import { describe, expect, it } from "vitest";
 import {
   RedisLock,
-  DEFAULTS,
-  type LockHandle,
-  type LostInfo,
+  RedLock,
+  LockBusyError,
+  LockLostError,
+  LockStateError,
+  LockTimeoutError,
+  QuorumError,
+  REDIS_LOCK_KEY_PREFIX,
+  type LockClient,
 } from "../src/index.js";
-import crypto from "node:crypto";
 
-const TEST_PREFIX = "test:redis-lock:";
-let keySeq = 0;
-
-function uniqueKey(): string {
-  return `${TEST_PREFIX}${process.pid}:${Date.now()}:${++keySeq}`;
-}
-
-function uuid(): string {
-  return crypto.randomUUID();
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-describe("RedisLock", () => {
-  let redis: RedisClientType;
-  let lock: RedisLock;
-
-  const activeHandles: LockHandle[] = [];
-
-  beforeAll(async () => {
-    redis = createClient();
-    await redis.connect();
-    lock = new RedisLock(redis);
+const sleep = (ms: number) =>
+  new Promise<void>((resolve) => setTimeout(resolve, ms));
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((done) => {
+    resolve = done;
   });
-
-  afterEach(async () => {
-    for (const h of activeHandles) {
-      try {
-        await h.release();
-      } catch {}
-    }
-    activeHandles.length = 0;
-  });
-
-  afterAll(async () => {
-    lock.stopAllRenewals();
-    await redis.quit();
-  });
-
-  async function acquireTracked(
-    ...args: Parameters<RedisLock["acquire"]>
-  ): Promise<LockHandle | null> {
-    const handle = await lock.acquire(...args);
-    if (handle) activeHandles.push(handle);
-    return handle;
+  return { promise, resolve };
+}
+class Fake implements LockClient {
+  values = new Map<string, { token: string; until: number }>();
+  setCalls: string[] = [];
+  evalCalls = 0;
+  failSet = false;
+  failEval = false;
+  async set(
+    key: string,
+    token: string,
+    options: { NX: true; PX: number },
+  ): Promise<unknown> {
+    this.setCalls.push(token);
+    if (this.failSet) throw new Error("network SET");
+    const value = this.values.get(key);
+    if (value && value.until > Date.now()) return null;
+    this.values.set(key, { token, until: Date.now() + options.PX });
+    return "OK";
   }
-
-  it("should acquire a lock successfully", async () => {
-    const key = uniqueKey();
-    const ownerId = uuid();
-
-    const handle = await acquireTracked({ key, ownerId, ttlMs: 5000 });
-
-    expect(handle).not.toBeNull();
-    expect(handle!.key).toBe(key);
-    expect(handle!.ownerId).toBe(ownerId);
-
-    const value = await redis.get(key);
-    expect(value).toBe(ownerId);
+  async eval(
+    script: string,
+    options: { keys: string[]; arguments: string[] },
+  ): Promise<unknown> {
+    this.evalCalls++;
+    if (this.failEval) throw new Error("network EVAL");
+    const key = options.keys[0]!,
+      token = options.arguments[0]!,
+      value = this.values.get(key);
+    if (!value || value.token !== token || value.until <= Date.now()) return 0;
+    if (script.includes("pexpire"))
+      value.until = Date.now() + Number(options.arguments[1]!);
+    else this.values.delete(key);
+    return 1;
+  }
+}
+describe("RedisLock", () => {
+  it("uses a fresh cryptographic token and the Go key namespace", async () => {
+    const client = new Fake(),
+      lock = new RedisLock("k", client, { ttlMs: 1000 });
+    await lock.lock();
+    expect(lock.key).toBe(REDIS_LOCK_KEY_PREFIX + "k");
+    const first = client.values.get(lock.key)!.token;
+    expect(first).toMatch(/^[0-9a-f]{48}$/);
+    expect(lock.held).toBe(true);
+    expect(lock.remainingMs).toBeGreaterThan(900);
+    await expect(lock.lock()).rejects.toBeInstanceOf(LockStateError);
+    await lock.unlock();
+    await lock.lock();
+    expect(client.values.get(lock.key)!.token).not.toBe(first);
+    await lock.close();
+    expect(lock.held).toBe(false);
+    await expect(lock.lock()).rejects.toBeInstanceOf(LockStateError);
   });
-
-  it("should release a lock successfully", async () => {
-    const key = uniqueKey();
-    const ownerId = uuid();
-
-    const handle = await acquireTracked({ key, ownerId, ttlMs: 5000 });
-    expect(handle).not.toBeNull();
-
-    const released = await handle!.release();
-    expect(released).toBe(true);
-
-    const value = await redis.get(key);
-    expect(value).toBeNull();
-  });
-
-  it("should return false when releasing a non-existent lock", async () => {
-    const released = await lock.release(uniqueKey(), uuid());
-    expect(released).toBe(false);
-  });
-
-  it("should fail to acquire a lock already held by another owner", async () => {
-    const key = uniqueKey();
-
-    const handle1 = await acquireTracked({ key, ownerId: uuid(), ttlMs: 5000 });
-    expect(handle1).not.toBeNull();
-
-    const handle2 = await acquireTracked({ key, ownerId: uuid(), ttlMs: 5000 });
-    expect(handle2).toBeNull();
-  });
-
-  it("should not release a lock held by a different owner", async () => {
-    const key = uniqueKey();
-    const owner1 = uuid();
-
-    const handle = await acquireTracked({ key, ownerId: owner1, ttlMs: 5000 });
-    expect(handle).not.toBeNull();
-
-    const released = await lock.release(key, uuid());
-    expect(released).toBe(false);
-
-    const value = await redis.get(key);
-    expect(value).toBe(owner1);
-  });
-
-  it("should auto-expire after ttlMs", async () => {
-    const key = uniqueKey();
-
-    await acquireTracked({ key, ownerId: uuid(), ttlMs: 300 });
-    await sleep(400);
-
-    const value = await redis.get(key);
-    expect(value).toBeNull();
-  });
-
-  it("should retry and acquire after the existing lock expires", async () => {
-    const key = uniqueKey();
-    const owner2 = uuid();
-
-    await acquireTracked({ key, ownerId: uuid(), ttlMs: 300 });
-
-    const handle2 = await acquireTracked({
-      key,
-      ownerId: owner2,
-      ttlMs: 5000,
-      retryCount: 10,
-      retryDelayMs: 100,
-      retryWithBackoff: false,
+  it("grants one lease under contention and never deletes a successor's token", async () => {
+    const client = new Fake(),
+      locks = Array.from(
+        { length: 20 },
+        () => new RedisLock("k", client, { ttlMs: 500 }),
+      );
+    const results = await Promise.allSettled(locks.map((lock) => lock.lock()));
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    const owner = locks[results.findIndex((r) => r.status === "fulfilled")]!;
+    client.values.set(owner.key, {
+      token: "successor",
+      until: Date.now() + 500,
     });
-
-    expect(handle2).not.toBeNull();
-    expect(handle2!.ownerId).toBe(owner2);
+    await expect(owner.delayExpire()).rejects.toBeInstanceOf(LockLostError);
+    expect(owner.held).toBe(false);
+    await expect(owner.unlock()).rejects.toBeInstanceOf(LockLostError);
+    expect(client.values.get(owner.key)!.token).toBe("successor");
   });
-
-  it("should return null when retries are exhausted", async () => {
-    const key = uniqueKey();
-
-    await acquireTracked({ key, ownerId: uuid(), ttlMs: 5000 });
-
-    const handle2 = await acquireTracked({
-      key,
-      ownerId: uuid(),
-      ttlMs: 5000,
-      retryCount: 2,
-      retryDelayMs: 50,
-      retryWithBackoff: false,
+  it("blocks until release and honors AbortSignal", async () => {
+    const client = new Fake(),
+      owner = new RedisLock("k", client, { ttlMs: 1000 });
+    const waiter = new RedisLock("k", client, {
+      ttlMs: 1000,
+      block: true,
+      retryIntervalMs: 5,
+      blockWaitingMs: 200,
     });
-
-    expect(handle2).toBeNull();
+    await owner.lock();
+    const waiting = waiter.lock();
+    await sleep(15);
+    await owner.unlock();
+    await waiting;
+    await waiter.unlock();
+    await owner.lock();
+    const controller = new AbortController();
+    const cancelled = waiter.lock(controller.signal);
+    const assertion = expect(cancelled).rejects.toThrow("cancel");
+    controller.abort(new Error("cancel"));
+    await assertion;
+    expect(owner.held).toBe(true);
+    await owner.close();
   });
-
-  it("should return null when acquireTimeoutMs is exceeded", async () => {
-    const key = uniqueKey();
-
-    await acquireTracked({ key, ownerId: uuid(), ttlMs: 5000 });
-
-    const start = Date.now();
-    const handle = await acquireTracked({
-      key,
-      ownerId: uuid(),
-      ttlMs: 5000,
-      retryCount: 100,
-      retryDelayMs: 50,
-      retryWithBackoff: false,
-      acquireTimeoutMs: 300,
+  it("times out blocking waits and does not retry transport errors", async () => {
+    const client = new Fake(),
+      owner = new RedisLock("k", client, { ttlMs: 1000 });
+    await owner.lock();
+    const waiter = new RedisLock("k", client, {
+      ttlMs: 1000,
+      block: true,
+      retryIntervalMs: 5,
+      blockWaitingMs: 25,
     });
-
-    const elapsed = Date.now() - start;
-    expect(handle).toBeNull();
-    expect(elapsed).toBeLessThan(600);
+    await expect(waiter.lock()).rejects.toBeInstanceOf(LockBusyError);
+    client.failSet = true;
+    const before = client.setCalls.length;
+    await expect(waiter.lock()).rejects.toThrow("network SET");
+    expect(client.setCalls.length - before).toBe(1);
+    await owner.close();
   });
-
-  it("should renew a held lock", async () => {
-    const key = uniqueKey();
-    const ownerId = uuid();
-
-    await acquireTracked({ key, ownerId, ttlMs: 5000 });
-
-    const renewed = await lock.renew(key, ownerId, 10000);
-    expect(renewed).toBe(true);
-
-    const pttl = await redis.pTTL(key);
-    expect(pttl).toBeGreaterThan(5000);
-  });
-
-  it("should not renew a lock owned by someone else", async () => {
-    const key = uniqueKey();
-
-    await acquireTracked({ key, ownerId: uuid(), ttlMs: 5000 });
-
-    const renewed = await lock.renew(key, uuid(), 10000);
-    expect(renewed).toBe(false);
-  });
-
-  it("should renew via handle.renew()", async () => {
-    const key = uniqueKey();
-    const ownerId = uuid();
-
-    const handle = await acquireTracked({ key, ownerId, ttlMs: 5000 });
-    expect(handle).not.toBeNull();
-
-    const renewed = await handle!.renew(10000);
-    expect(renewed).toBe(true);
-
-    const pttl = await redis.pTTL(key);
-    expect(pttl).toBeGreaterThan(5000);
-  });
-
-  it("should renew via handle.renew() with default ttl", async () => {
-    const key = uniqueKey();
-    const ownerId = uuid();
-
-    const handle = await acquireTracked({ key, ownerId, ttlMs: 5000 });
-    expect(handle).not.toBeNull();
-
-    await sleep(200);
-
-    const renewed = await handle!.renew();
-    expect(renewed).toBe(true);
-
-    const pttl = await redis.pTTL(key);
-    expect(pttl).toBeGreaterThan(4000);
-  });
-
-  it("should keep the lock alive beyond initial ttl with autoRenew", async () => {
-    const key = uniqueKey();
-    const ownerId = uuid();
-
-    const handle = await acquireTracked({
-      key,
-      ownerId,
-      ttlMs: 300,
-      autoRenew: true,
+  it("cleans up a SET whose reply arrives after command timeout", async () => {
+    const client = new Fake(),
+      gate = deferred<void>(),
+      original = client.set.bind(client);
+    client.set = async (...args) => {
+      await gate.promise;
+      return original(...args);
+    };
+    const lock = new RedisLock("k", client, {
+      ttlMs: 500,
+      commandTimeoutMs: 15,
     });
-    expect(handle).not.toBeNull();
-
-    await sleep(500);
-
-    const value = await redis.get(key);
-    expect(value).toBe(ownerId);
-
-    await handle!.release();
+    await expect(lock.lock()).rejects.toBeInstanceOf(LockTimeoutError);
+    expect(lock.held).toBe(false);
+    gate.resolve();
+    await sleep(5);
+    expect(client.values.has(lock.key)).toBe(false);
   });
-
-  it("should not stop watchdog when a non-owner calls release", async () => {
-    const key = uniqueKey();
-    const realOwner = uuid();
-    const impostor = uuid();
-
-    const handle = await acquireTracked({
-      key,
-      ownerId: realOwner,
-      ttlMs: 300,
-      autoRenew: true,
+  it("rejects replies arriving after the lease window and cleans up", async () => {
+    const client = new Fake(),
+      original = client.set.bind(client);
+    client.set = async (...args) => {
+      const response = await original(...args);
+      await sleep(45);
+      return response;
+    };
+    const lock = new RedisLock("k", client, {
+      ttlMs: 30,
+      commandTimeoutMs: 100,
     });
-    expect(handle).not.toBeNull();
-
-    const released = await lock.release(key, impostor);
-    expect(released).toBe(false);
-
-    await sleep(500);
-
-    const value = await redis.get(key);
-    expect(value).toBe(realOwner);
-
-    await handle!.release();
+    await expect(lock.lock()).rejects.toBeInstanceOf(LockLostError);
+    expect(lock.held).toBe(false);
   });
-
-  it("should invoke onLost when the lock expires during autoRenew", async () => {
-    const key = uniqueKey();
-    const ownerId = uuid();
-    const lostEvents: LostInfo[] = [];
-
-    const handle = await acquireTracked({
-      key,
-      ownerId,
-      ttlMs: 300,
-      autoRenew: true,
-      onLost: (info) => lostEvents.push(info),
-    });
-    expect(handle).not.toBeNull();
-
-    await redis.del(key);
-
-    await sleep(250);
-
-    expect(lostEvents.length).toBe(1);
-    expect(lostEvents[0]).toEqual({ key, ownerId, reason: "expired" });
+  it("renews without overlap and stops after unlock or watchdog failure", async () => {
+    const client = new Fake(),
+      lock = new RedisLock("k", client, { ttlMs: 90, autoRenew: true });
+    await lock.lock();
+    await sleep(150);
+    expect(lock.held).toBe(true);
+    await lock.unlock();
+    const calls = client.evalCalls;
+    await sleep(80);
+    expect(client.evalCalls).toBe(calls);
+    await lock.lock();
+    client.failEval = true;
+    await sleep(60);
+    expect(lock.held).toBe(false);
+    client.failEval = false;
+    await lock.close();
   });
-
-  it("should return a monotonically increasing fencing token", async () => {
-    const key = uniqueKey();
-
-    const h1 = await acquireTracked({
-      key,
-      ownerId: uuid(),
-      ttlMs: 300,
-      fencingToken: true,
-    });
-    expect(h1).not.toBeNull();
-    expect(h1!.fencingToken).toBeGreaterThan(0);
-
-    await h1!.release();
-
-    const h2 = await acquireTracked({
-      key,
-      ownerId: uuid(),
-      ttlMs: 300,
-      fencingToken: true,
-    });
-    expect(h2).not.toBeNull();
-    expect(h2!.fencingToken).toBeGreaterThan(h1!.fencingToken!);
+  it("does not restart a renewal that was in flight during release", async () => {
+    const client = new Fake(),
+      gate = deferred<void>(),
+      started = deferred<void>(),
+      original = client.eval.bind(client);
+    let renewals = 0;
+    client.eval = async (script, options) => {
+      if (script.includes("pexpire")) {
+        renewals++;
+        started.resolve();
+        await gate.promise;
+      }
+      return original(script, options);
+    };
+    const lock = new RedisLock("k", client, { ttlMs: 150, autoRenew: true });
+    await lock.lock();
+    await started.promise;
+    const releasing = lock.unlock();
+    gate.resolve();
+    await releasing;
+    await sleep(100);
+    expect(renewals).toBe(1);
+    expect(client.values.has(lock.key)).toBe(false);
   });
-
-  it("should not include fencingToken when option is disabled", async () => {
-    const key = uniqueKey();
-
-    const handle = await acquireTracked({
-      key,
-      ownerId: uuid(),
-      ttlMs: 5000,
-    });
-    expect(handle).not.toBeNull();
-    expect(handle!.fencingToken).toBeUndefined();
+  it("stops the watchdog on release errors and lets cleanup be retried", async () => {
+    const client = new Fake(),
+      lock = new RedisLock("k", client, { ttlMs: 90, autoRenew: true });
+    await lock.lock();
+    client.failEval = true;
+    await expect(lock.unlock()).rejects.toThrow("release failed");
+    expect(lock.held).toBe(false);
+    const calls = client.evalCalls;
+    await sleep(45);
+    expect(client.evalCalls).toBe(calls);
+    client.failEval = false;
+    await lock.unlock();
+    expect(client.values.has(lock.key)).toBe(false);
   });
-
-  it("should invoke onAcquired with attempt info", async () => {
-    const key = uniqueKey();
-    const ownerId = uuid();
-    let acquiredInfo: { attempt: number } | null = null;
-
-    await acquireTracked({
-      key,
-      ownerId,
-      ttlMs: 5000,
-      onAcquired: (info) => {
-        acquiredInfo = info;
-      },
-    });
-
-    expect(acquiredInfo).not.toBeNull();
-    expect(acquiredInfo!.attempt).toBe(0);
+  it("reacquires expired leases, serializes concurrent instance operations", async () => {
+    const client = new Fake(),
+      lock = new RedisLock("k", client, { ttlMs: 30 });
+    await lock.lock();
+    await sleep(40);
+    expect(lock.held).toBe(false);
+    await lock.lock();
+    await lock.unlock();
+    await Promise.all([lock.lock(), lock.unlock()]);
+    expect(lock.held).toBe(false);
   });
-
-  it("should invoke onRetry before each retry sleep", async () => {
-    const key = uniqueKey();
-    const retries: number[] = [];
-
-    await acquireTracked({ key, ownerId: uuid(), ttlMs: 5000 });
-
-    await acquireTracked({
-      key,
-      ownerId: uuid(),
-      ttlMs: 5000,
-      retryCount: 2,
-      retryDelayMs: 30,
-      retryWithBackoff: false,
-      onRetry: (info) => retries.push(info.attempt),
-    });
-
-    expect(retries).toEqual([0, 1]);
+  it("reschedules manual renewal TTL and rejects invalid options", async () => {
+    const client = new Fake(),
+      lock = new RedisLock("k", client, { ttlMs: 300, autoRenew: true });
+    await lock.lock();
+    await lock.delayExpire(60);
+    await sleep(100);
+    expect(lock.held).toBe(true);
+    await lock.close();
+    for (const ttlMs of [0, -1, NaN, Infinity, 1.5, 2 ** 32])
+      expect(() => new RedisLock("k", client, { ttlMs })).toThrow();
+    expect(() => new RedisLock("", client)).toThrow();
+    expect(() => lock.delayExpire(0)).toThrow();
   });
-
-  it("should let the lock expire after stopAllRenewals", async () => {
-    const key = uniqueKey();
-    const ownerId = uuid();
-
-    await acquireTracked({
-      key,
-      ownerId,
-      ttlMs: 300,
-      autoRenew: true,
-    });
-
-    lock.stopAllRenewals();
-
-    await sleep(450);
-
-    const value = await redis.get(key);
-    expect(value).toBeNull();
+});
+describe("RedLock", () => {
+  it("uses one token on all masters, requires a majority, and exposes remaining time", async () => {
+    const clients = [new Fake(), new Fake(), new Fake()],
+      lock = new RedLock("k", clients, { ttlMs: 500, nodeTimeoutMs: 10 });
+    clients[2]!.failSet = true;
+    await lock.lock();
+    expect(lock.held).toBe(true);
+    expect(lock.remainingMs).toBeGreaterThan(400);
+    expect(new Set(clients.map((c) => c.setCalls[0])).size).toBe(1);
+    await lock.delayExpire(600);
+    await lock.unlock();
+    expect(clients.every((c) => !c.values.has(lock.key))).toBe(true);
   });
-
-  it("should support sequential acquire-release-acquire on the same key", async () => {
-    const key = uniqueKey();
-    const owner1 = uuid();
-    const owner2 = uuid();
-
-    const h1 = await acquireTracked({ key, ownerId: owner1, ttlMs: 5000 });
-    expect(h1).not.toBeNull();
-
-    await h1!.release();
-
-    const h2 = await acquireTracked({ key, ownerId: owner2, ttlMs: 5000 });
-    expect(h2).not.toBeNull();
-    expect(h2!.ownerId).toBe(owner2);
-
-    const value = await redis.get(key);
-    expect(value).toBe(owner2);
+  it("cleans up every node, including SET-applied-but-reply-lost", async () => {
+    const clients = [new Fake(), new Fake(), new Fake()],
+      original = clients[0]!.set.bind(clients[0]!);
+    clients[0]!.set = async (...args) => {
+      await original(...args);
+      throw new Error("lost reply");
+    };
+    clients[1]!.failSet = true;
+    const lock = new RedLock("k", clients, { ttlMs: 500, nodeTimeoutMs: 10 });
+    await expect(lock.lock()).rejects.toBeInstanceOf(QuorumError);
+    expect(clients.every((c) => !c.values.has(lock.key))).toBe(true);
+    expect(clients.every((c) => c.evalCalls > 0)).toBe(true);
   });
-
-  it("should grant the lock to exactly one owner under concurrency", async () => {
-    const key = uniqueKey();
-    const ownerCount = 10;
-    const owners = Array.from({ length: ownerCount }, () => uuid());
-
-    const results = await Promise.all(
-      owners.map((ownerId) => lock.acquire({ key, ownerId, ttlMs: 5000 })),
-    );
-
-    const winners = results.filter((r) => r !== null);
-    expect(winners.length).toBe(1);
-
-    await winners[0]!.release();
-  });
-
-  it("should throw RangeError on ttlMs <= 0", async () => {
-    await expect(
-      lock.acquire({ key: uniqueKey(), ownerId: uuid(), ttlMs: 0 }),
-    ).rejects.toThrow(RangeError);
-
-    await expect(
-      lock.acquire({ key: uniqueKey(), ownerId: uuid(), ttlMs: -1 }),
-    ).rejects.toThrow(RangeError);
-  });
-
-  it("should throw TypeError on empty key", async () => {
-    await expect(
-      lock.acquire({ key: "", ownerId: uuid(), ttlMs: 1000 }),
-    ).rejects.toThrow(TypeError);
-  });
-
-  it("should throw TypeError on empty ownerId", async () => {
-    await expect(
-      lock.acquire({ key: uniqueKey(), ownerId: "", ttlMs: 1000 }),
-    ).rejects.toThrow(TypeError);
-  });
-
-  it("should throw RangeError on negative retryCount", async () => {
-    await expect(
-      lock.acquire({
-        key: uniqueKey(),
-        ownerId: uuid(),
-        ttlMs: 1000,
-        retryCount: -1,
-      }),
-    ).rejects.toThrow(RangeError);
-  });
-
-  it("should throw RangeError on NaN retryDelayMs", async () => {
-    await expect(
-      lock.acquire({
-        key: uniqueKey(),
-        ownerId: uuid(),
-        ttlMs: 1000,
-        retryDelayMs: NaN,
-      }),
-    ).rejects.toThrow(RangeError);
-  });
-
-  it("should throw RangeError on negative maxRetryDelayMs", async () => {
-    await expect(
-      lock.acquire({
-        key: uniqueKey(),
-        ownerId: uuid(),
-        ttlMs: 1000,
-        maxRetryDelayMs: -100,
-      }),
-    ).rejects.toThrow(RangeError);
-  });
-
-  it("should throw RangeError when autoRenew is enabled with tiny ttlMs", async () => {
-    await expect(
-      lock.acquire({
-        key: uniqueKey(),
-        ownerId: uuid(),
-        ttlMs: 50,
-        autoRenew: true,
-      }),
-    ).rejects.toThrow(RangeError);
-  });
-
-  it("should throw RangeError on non-positive acquireTimeoutMs", async () => {
-    await expect(
-      lock.acquire({
-        key: uniqueKey(),
-        ownerId: uuid(),
-        ttlMs: 1000,
-        acquireTimeoutMs: 0,
-      }),
-    ).rejects.toThrow(RangeError);
-  });
-
-  it("should export sensible defaults", () => {
-    expect(DEFAULTS.retryCount).toBe(0);
-    expect(DEFAULTS.retryDelayMs).toBe(200);
-    expect(DEFAULTS.retryWithBackoff).toBe(true);
-    expect(DEFAULTS.maxRetryDelayMs).toBe(5000);
-    expect(DEFAULTS.autoRenew).toBe(false);
-    expect(DEFAULTS.fencingToken).toBe(false);
-    expect(DEFAULTS.minAutoRenewTtlMs).toBe(300);
+  it("rejects duplicate clients and oversized node timeouts", () => {
+    const client = new Fake();
+    expect(() => new RedLock("k", [client, client, client])).toThrow();
+    expect(
+      () =>
+        new RedLock("k", [new Fake(), new Fake(), new Fake()], {
+          ttlMs: 100,
+          nodeTimeoutMs: 20,
+        }),
+    ).toThrow();
   });
 });

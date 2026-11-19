@@ -1,13 +1,12 @@
 {
   "name": "@yukino.js/skiplist",
   "version": "0.0.0",
-  "description": "A Redis-style skiplist (sorted set) implementation in TypeScript",
+  "description": "A generic ordered map backed by a skip list, with Go-compatible text persistence",
   "keywords": [
     "skiplist",
-    "sorted-set",
-    "redis",
+    "ordered-map",
     "data-structure",
-    "rank"
+    "typescript"
   ],
   "license": "MIT",
   "author": "hangtiancheng",
@@ -29,7 +28,8 @@
     "build": "rollup -c rollup.config.mjs",
     "clean": "rm -rf dist",
     "test": "vitest run",
-    "prepublishOnly": "pnpm clean && pnpm build"
+    "prepublishOnly": "pnpm clean && pnpm build",
+    "typecheck": "tsc --noEmit -p tsconfig.test.json"
   },
   "devDependencies": {
     "@rollup/plugin-terser": "^1.0.2",
@@ -40,5 +40,8 @@
     "tslib": "^2.9.1",
     "typescript": "^6.0.3",
     "vitest": "^4.1.12"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

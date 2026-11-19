@@ -1,90 +1,109 @@
 # @yukino.js/redis-lock
 
-A **Redis-based distributed lock** for TypeScript — atomic acquire/release via
-Lua scripts, with retries + jittered backoff, an optional renewal watchdog, and
-fencing tokens to defend against stale writes.
-
-[![npm](https://img.shields.io/npm/v/@yukino.js/redis-lock?label=npm&color=F05138)](https://www.npmjs.com/package/@yukino.js/redis-lock)
-[![License: MIT](https://img.shields.io/badge/License-MIT-f5a623.svg)](../../LICENSE)
-
-## Installation
-
-```sh
-pnpm add @yukino.js/redis-lock redis
-```
-
-## Usage
+Redis leases aligned with `yukino.go/components/redis_lock`. Requires Node.js
+22+. Clients are supplied by the caller; there are no runtime dependencies.
+The old manager/ownerId/fencing-token API has been replaced.
 
 ```ts
 import { createClient } from "redis";
-import { RedisLock } from "@yukino.js/redis-lock";
+import { RedisLock, LockBusyError } from "@yukino.js/redis-lock";
 
-const redis = createClient();
-await redis.connect();
-
-const lock = new RedisLock(redis);
-
-const handle = await lock.acquire({
-  key: "lock:order:123",
-  ownerId: crypto.randomUUID(),
-  ttlMs: 10_000,
-  autoRenew: true, // watchdog renews at ttl/3 intervals
-  retryCount: 3, // up to 4 total attempts
+const client = createClient({
+  url: "redis://localhost:6379",
+  disableOfflineQueue: true,
+  socket: { reconnectStrategy: false, connectTimeout: 2000 },
 });
-
-if (!handle) {
-  throw new Error("could not acquire lock within budget");
-}
-
+await client.connect();
+const lock = new RedisLock("order:42", client, {
+  ttlMs: 30_000, // explicit TTL disables the default watchdog
+  block: true,
+  blockWaitingMs: 5000,
+});
+await lock.lock(AbortSignal.timeout(5000));
 try {
-  // critical section…
+  // Critical section: finish while lock.held and lock.remainingMs > 0.
 } finally {
-  await handle.release();
+  await lock.unlock();
+}
+await client.quit();
+```
+
+Each instance represents one non-reentrant lease. Every acquisition generates
+24 cryptographically random bytes, hex encoded. Redis keys use Go's
+`DISTRIBUTED_LOCK_PREFIX_` namespace. SET NX PX acquires atomically; Lua compares
+the token before deleting or extending a key. No caller-supplied ownership IDs
+or persistent fencing counters are used.
+
+| Method/property       | Behavior                                                                                    |
+| --------------------- | ------------------------------------------------------------------------------------------- |
+| `lock(signal?)`       | Acquire, or throw; optional cancellation controls acquisition only                          |
+| `unlock()`            | Stop renewal, delete the owned key; transport failures allow cleanup retry                  |
+| `delayExpire(ttlMs?)` | Ownership-checked renewal, defaulting to the configured TTL                                 |
+| `held`, `remainingMs` | Conservative local validity estimate; not a Redis ownership query                           |
+| `key`                 | Actual prefixed Redis key                                                                   |
+| `close()`             | Stop renewal and clean up; can retry after transport failure; never closes borrowed clients |
+
+Omitting `ttlMs` enables the watchdog with a 30-second TTL. You can also set
+`autoRenew` explicitly for a single-node lock. Renewals run serially at TTL/3,
+use the current renewal TTL and stop on ownership loss or a command failure.
+Cancellation of the acquisition signal after success does not stop renewal.
+Release and close stop renewal even when Redis is unavailable.
+
+Options: `ttlMs` (30000), `block` (false), `blockWaitingMs` (5000),
+`retryIntervalMs` (50, with up to one additional interval of jitter),
+`commandTimeoutMs` (2000), `autoRenew` (true only when TTL is omitted).
+Durations must be positive integer milliseconds within the Node timer range;
+auto renewal requires TTL >= 30ms. The validity window subtracts elapsed
+acquisition time and a 1% + 2ms clock-drift allowance.
+
+`LockBusyError` means contention; `LockLostError` means ownership or local
+validity was lost. `LockStateError` rejects reentry or acquisition after close.
+`LockTimeoutError` bounds command waits. Redis transport errors are preserved;
+cleanup failures are included in `AggregateError`. A timeout cannot revoke a
+command already sent to Redis: uncertain SET operations receive another
+ownership-checked cleanup after the original promise settles. Configure client
+transport timeouts and disable queued commands and automatic command retries;
+TTL remains the fallback if cleanup cannot reach Redis. Blocking wait budgets
+bound acquisition attempts; cleanup can add another command timeout.
+
+## Redlock
+
+```ts
+import { RedLock } from "@yukino.js/redis-lock";
+
+const lock = new RedLock("order:42", [masterA, masterB, masterC], {
+  ttlMs: 30_000,
+  nodeTimeoutMs: 50,
+});
+await lock.lock();
+try {
+  // Work within lock.remainingMs.
+} finally {
+  await lock.close();
 }
 ```
 
-## Features
+Supply at least three distinct clients connected to independent masters.
+Distinct objects connected to the same master do not represent independent
+votes. Each attempt sends the same token to every master in parallel and
+requires a majority before the overall validity window expires. Node timeouts
+must be less than TTL/10. Failed acquisition cleans every node, including those
+whose SET reply was lost. Partial cleanup errors are reported. No watchdog runs
+for Redlock; explicit `delayExpire` requires a new majority before the old
+validity window expires. `QuorumError` reports failed acquisition;
+`isRetryableError` recognizes contention and quorum failures for blocking mode.
 
-- **Atomic operations** — acquire and release are implemented as Lua scripts
-  (`EVALSHA`-cached) so ownership checks and mutation happen in a single
-  round-trip.
-- **Retries with backoff** — configurable retry count with exponential backoff
-  plus jitter, and an absolute `acquireTimeoutMs` ceiling.
-- **Renewal watchdog** — `autoRenew` extends the TTL at `ttlMs / 3` intervals and
-  stops on release or loss; `onLost` fires if the lock is stolen.
-- **Fencing tokens** — a monotonically increasing token lets downstream resources
-  reject stale writers whose lock expired.
-- **Not reentrant** — a given `ownerId` cannot acquire the same key twice.
+The protocol and assumptions follow the [Redis distributed-lock documentation](https://redis.io/docs/latest/develop/clients/patterns/distributed-locks/).
+Leases assume bounded clock drift and work that ends before expiry. These
+packages do not provide storage-enforced fencing or consensus guarantees.
 
-## API
+Go uses seconds for `WithExpireSeconds`/`DelayExpire`; JS uses milliseconds.
+Both share token encoding, key namespace, ownership checks, watchdog lifetime,
+fixed Redlock leases, overall elapsed-time accounting, and cleanup semantics.
 
-### `new RedisLock(redis)`
-
-Wraps a connected `RedisClientType` from the `redis` package.
-
-### `lock.acquire(options)` → `Promise<LockHandle | null>`
-
-Returns a handle on success, `null` if the lock could not be acquired within the
-retry/timeout budget.
-
-| Option                              | Type      | Default | Description                    |
-| ----------------------------------- | --------- | ------- | ------------------------------ |
-| `key`                               | `string`  | —       | Redis lock key                 |
-| `ownerId`                           | `string`  | —       | Unique owner id (UUID v4)      |
-| `ttlMs`                             | `number`  | —       | Lock TTL in milliseconds       |
-| `retryCount`                        | `number`  | `0`     | Extra attempts after the first |
-| `retryDelayMs`                      | `number`  | `200`   | Base delay between retries     |
-| `retryWithBackoff`                  | `boolean` | `true`  | Exponential backoff + jitter   |
-| `maxRetryDelayMs`                   | `number`  | `5000`  | Retry-delay upper bound        |
-| `autoRenew`                         | `boolean` | `false` | Renew watchdog at `ttlMs / 3`  |
-| `fencingToken`                      | `boolean` | `false` | Return a fencing token         |
-| `acquireTimeoutMs`                  | `number`  | —       | Absolute acquire ceiling       |
-| `onAcquired` / `onRetry` / `onLost` | callback  | —       | Lifecycle hooks                |
-
-### `LockHandle`
-
-| Member          | Description                                            |
-| --------------- | ------------------------------------------------------ |
-| `release()`     | Release; `true` if released, `false` if lost/expired   |
-| `renew(ttlMs?)` | Extend the TTL; `true` if still owned                  |
-| `fencingToken`  | Monotonic token (only when `fencingToken` was enabled) |
+```sh
+pnpm test                     # deterministic fault tests; no Redis needed
+pnpm typecheck
+pnpm build
+REDIS_URLS=redis://127.0.0.1:6379,redis://127.0.0.1:6380,redis://127.0.0.1:6381 pnpm test
+```

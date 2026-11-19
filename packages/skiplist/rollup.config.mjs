@@ -6,7 +6,7 @@ import typescript from "@rollup/plugin-typescript";
 import dts from "rollup-plugin-dts";
 
 const distDir = fileURLToPath(new URL("dist", import.meta.url));
-const external = [];
+const external = (id) => id.startsWith("node:");
 
 function cleanDist() {
   return {

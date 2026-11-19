@@ -3,26 +3,20 @@
   "compilerOptions": {
     "rootDir": "./src",
     "outDir": "./dist",
-
     "module": "nodenext",
     "target": "esnext",
-    "types": [],
-
+    "types": ["node"],
     "sourceMap": true,
     "declaration": true,
     "declarationMap": true,
-
     "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": false,
-
+    "exactOptionalPropertyTypes": true,
     "strict": true,
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
     "skipLibCheck": true,
-
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true
+    "lib": ["esnext"]
   }
 }
